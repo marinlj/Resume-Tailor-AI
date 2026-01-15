@@ -1,0 +1,34 @@
+{
+  "name": "resume-tailor-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.14",
+    "@ai-sdk/react": "^3.0.39",
+    "@prisma/client": "^7.2.0",
+    "ai": "^6.0.37",
+    "docx": "^9.5.1",
+    "next": "16.1.2",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-markdown": "^10.1.0",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20.19.30",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.2",
+    "prisma": "^7.2.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
