@@ -56,8 +56,26 @@ export function sanitizeFilename(str: string): string {
 }
 
 /**
+ * User ID management for authenticated users
+ * User ID is now passed via tool context from the API route
+ */
+let currentUserId: string | null = null;
+
+export function setCurrentUserId(userId: string) {
+  currentUserId = userId;
+}
+
+export function getCurrentUserId(): string {
+  if (!currentUserId) {
+    throw new Error('User ID not set. Ensure auth middleware is working.');
+  }
+  return currentUserId;
+}
+
+/**
  * Get the temporary user ID until auth is implemented
+ * @deprecated Use getCurrentUserId() instead - kept for backward compatibility during transition
  */
 export function getTempUserId(): string {
-  return process.env.TEMP_USER_ID || 'temp-user-id';
+  return getCurrentUserId();
 }
