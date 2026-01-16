@@ -274,9 +274,9 @@ export const contactDetailsInputSchema = z.object({
   email: z.string().email().describe('Professional email address'),
   phone: z.string().optional().describe('Phone number'),
   location: z.string().optional().describe('Location (City, State/Country)'),
-  linkedinUrl: z.string().url().optional().describe('LinkedIn profile URL'),
-  portfolioUrl: z.string().url().optional().describe('Portfolio or personal website URL'),
-  githubUrl: z.string().url().optional().describe('GitHub profile URL'),
+  linkedinUrl: z.string().optional().transform(v => v === '' ? undefined : v).describe('LinkedIn profile URL'),
+  portfolioUrl: z.string().optional().transform(v => v === '' ? undefined : v).describe('Portfolio or personal website URL'),
+  githubUrl: z.string().optional().transform(v => v === '' ? undefined : v).describe('GitHub profile URL'),
   headline: z.string().optional().describe('Professional headline (e.g., "Senior Software Engineer")'),
 });
 
