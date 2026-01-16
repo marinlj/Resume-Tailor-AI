@@ -1,6 +1,13 @@
 import { tool } from 'ai';
 import { prisma } from '@/lib/prisma';
-import { matchAchievementsInputSchema, RankedMatch, Gap } from '../schemas';
+import {
+  matchAchievementsInputSchema,
+  RankedMatch,
+  Gap,
+  successProfileInputSchema,
+  KeyTheme,
+} from '../schemas';
+import { getTempUserId, safeJsonParse } from './utils';
 
 /**
  * Matching algorithm thresholds
@@ -16,32 +23,42 @@ const MATCH_THRESHOLDS = {
   MAX_MATCHES: 15,
 } as const;
 
-const getTempUserId = () => process.env.TEMP_USER_ID || 'temp-user-id';
-
-interface KeyTheme {
-  theme: string;
-  tags: string[];
-}
-
-interface SuccessProfile {
-  mustHave: string[];
-  keyThemes: KeyTheme[];
-}
-
 export const matchAchievements = tool({
   description: 'Match achievements from the library against a success profile. Returns ranked matches and identified gaps.',
   inputSchema: matchAchievementsInputSchema,
   execute: async ({ profileJson }) => {
     const userId = getTempUserId();
-    const profile: SuccessProfile = JSON.parse(profileJson);
+
+    // Validate JSON input
+    const parseResult = safeJsonParse(profileJson, successProfileInputSchema);
+    if (!parseResult.data) {
+      return {
+        success: false,
+        error: parseResult.error || 'Failed to parse profile JSON',
+        matches: [],
+        gaps: [],
+      };
+    }
+    const profile = parseResult.data;
 
     // Get all user achievements
-    const achievements = await prisma.achievement.findMany({
-      where: { userId },
-    });
+    let achievements;
+    try {
+      achievements = await prisma.achievement.findMany({
+        where: { userId },
+      });
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Failed to fetch achievements from database',
+        matches: [],
+        gaps: [],
+      };
+    }
 
     if (achievements.length === 0) {
       return {
+        success: true,
         matches: [],
         gaps: profile.mustHave.map((req: string) => ({
           requirement: req,
@@ -130,6 +147,7 @@ export const matchAchievements = tool({
       }));
 
     return {
+      success: true,
       matches: topMatches,
       gaps,
       summary: {
