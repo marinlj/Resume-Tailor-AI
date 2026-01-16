@@ -1,10 +1,10 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -14,12 +14,15 @@ model User {
   image         String?
   emailVerified DateTime?
 
-  accounts      Account[]
-  sessions      Session[]
-  achievements  Achievement[]
-  preferences   Preference?
-  conversations Conversation[]
-  resumes       GeneratedResume[]
+  accounts       Account[]
+  sessions       Session[]
+  achievements   Achievement[]
+  skills         Skill[]
+  education      Education[]
+  preferences    Preference?
+  conversations  Conversation[]
+  resumes        GeneratedResume[]
+  contactDetails ContactDetails?
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -81,6 +84,43 @@ model Achievement {
   @@index([userId])
 }
 
+model Skill {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name      String
+  category  String?  // e.g., "Programming Languages", "Frameworks", "Tools", "Soft Skills"
+  level     String?  // e.g., "Expert", "Advanced", "Intermediate", "Beginner"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Education {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  institution  String
+  degree       String    // e.g., "Bachelor of Science", "Master of Arts"
+  field        String?   // e.g., "Computer Science", "Business Administration"
+  location     String?
+  startDate    DateTime?
+  endDate      DateTime?
+  gpa          String?
+  honors       String?   // e.g., "Magna Cum Laude", "Dean's List"
+  activities   String[]  // Relevant activities, clubs, coursework
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+}
+
 model Preference {
   id                   String  @id @default(cuid())
   userId               String  @unique
@@ -123,4 +163,25 @@ model GeneratedResume {
   createdAt      DateTime @default(now())
 
   @@index([userId])
+}
+
+model ContactDetails {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Required fields
+  fullName     String
+  email        String
+
+  // Optional fields
+  phone        String?
+  location     String?
+  linkedinUrl  String?
+  portfolioUrl String?
+  githubUrl    String?
+  headline     String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
