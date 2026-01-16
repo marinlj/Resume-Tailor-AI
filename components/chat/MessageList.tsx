@@ -2,8 +2,10 @@
 
 import { useEffect, useRef } from 'react';
 import type { UIMessage } from 'ai';
+import { isToolUIPart, getToolName } from 'ai';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MarkdownContent } from './MarkdownContent';
+import { ToolCallDisplay } from './ToolCallDisplay';
 import { cn } from '@/lib/utils';
 
 interface MessageListProps {
@@ -52,6 +54,18 @@ export function MessageList({ messages, status }: MessageListProps) {
                     <MarkdownContent key={i} content={part.text} />
                   ) : (
                     <p key={i} className="whitespace-pre-wrap">{part.text}</p>
+                  );
+                }
+                if (isToolUIPart(part)) {
+                  const toolName = getToolName(part);
+                  return (
+                    <ToolCallDisplay
+                      key={i}
+                      toolName={toolName}
+                      state={part.state}
+                      input={'input' in part ? part.input : undefined}
+                      output={'output' in part ? part.output : undefined}
+                    />
                   );
                 }
                 return null;
