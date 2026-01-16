@@ -2,30 +2,32 @@ import { tool } from 'ai';
 import { prisma } from '@/lib/prisma';
 import { achievementInputSchema } from '../schemas';
 import { z } from 'zod';
-
-// Temporary user ID until auth is implemented
-const getTempUserId = () => process.env.TEMP_USER_ID || 'temp-user-id';
+import { getTempUserId } from './utils';
 
 export const getLibraryStatus = tool({
   description: 'Check if the user has a master library of achievements and get stats',
   inputSchema: z.object({}),
   execute: async () => {
     const userId = getTempUserId();
+    try {
+      const [count, latest] = await Promise.all([
+        prisma.achievement.count({ where: { userId } }),
+        prisma.achievement.findFirst({
+          where: { userId },
+          orderBy: { updatedAt: 'desc' },
+          select: { updatedAt: true },
+        }),
+      ]);
 
-    const [count, latest] = await Promise.all([
-      prisma.achievement.count({ where: { userId } }),
-      prisma.achievement.findFirst({
-        where: { userId },
-        orderBy: { updatedAt: 'desc' },
-        select: { updatedAt: true },
-      }),
-    ]);
-
-    return {
-      exists: count > 0,
-      count,
-      lastUpdated: latest?.updatedAt.toISOString() ?? null,
-    };
+      return {
+        success: true,
+        exists: count > 0,
+        count,
+        lastUpdated: latest?.updatedAt.toISOString() ?? null,
+      };
+    } catch (error) {
+      return { success: false, error: 'Failed to check library status' };
+    }
   },
 });
 
@@ -37,32 +39,38 @@ export const getAchievements = tool({
   }),
   execute: async ({ tags, company }) => {
     const userId = getTempUserId();
+    try {
+      const where: Record<string, unknown> = { userId };
 
-    const where: any = { userId };
+      if (tags && tags.length > 0) {
+        where.tags = { hasSome: tags };
+      }
 
-    if (tags && tags.length > 0) {
-      where.tags = { hasSome: tags };
+      if (company) {
+        where.company = { contains: company, mode: 'insensitive' };
+      }
+
+      const achievements = await prisma.achievement.findMany({
+        where,
+        orderBy: [{ company: 'asc' }, { startDate: 'desc' }],
+      });
+
+      return {
+        success: true,
+        achievements: achievements.map((a) => ({
+          id: a.id,
+          company: a.company,
+          title: a.title,
+          location: a.location,
+          startDate: a.startDate?.toISOString().slice(0, 7) ?? null,
+          endDate: a.endDate?.toISOString().slice(0, 7) ?? null,
+          text: a.text,
+          tags: a.tags,
+        })),
+      };
+    } catch (error) {
+      return { success: false, error: 'Failed to fetch achievements' };
     }
-
-    if (company) {
-      where.company = { contains: company, mode: 'insensitive' };
-    }
-
-    const achievements = await prisma.achievement.findMany({
-      where,
-      orderBy: [{ company: 'asc' }, { startDate: 'desc' }],
-    });
-
-    return achievements.map((a) => ({
-      id: a.id,
-      company: a.company,
-      title: a.title,
-      location: a.location,
-      startDate: a.startDate?.toISOString().slice(0, 7) ?? null,
-      endDate: a.endDate?.toISOString().slice(0, 7) ?? null,
-      text: a.text,
-      tags: a.tags,
-    }));
   },
 });
 
@@ -71,37 +79,41 @@ export const addAchievement = tool({
   inputSchema: achievementInputSchema,
   execute: async (input) => {
     const userId = getTempUserId();
+    try {
+      // Ensure user exists
+      await prisma.user.upsert({
+        where: { id: userId },
+        update: {},
+        create: { id: userId, email: `${userId}@temp.local` },
+      });
 
-    // Ensure user exists
-    await prisma.user.upsert({
-      where: { id: userId },
-      update: {},
-      create: { id: userId, email: `${userId}@temp.local` },
-    });
+      const achievement = await prisma.achievement.create({
+        data: {
+          userId,
+          company: input.company,
+          title: input.title,
+          location: input.location ?? null,
+          startDate: input.startDate ? new Date(input.startDate) : null,
+          endDate: input.endDate === 'present' ? null : input.endDate ? new Date(input.endDate) : null,
+          text: input.text,
+          tags: input.tags,
+        },
+      });
 
-    const achievement = await prisma.achievement.create({
-      data: {
-        userId,
-        company: input.company,
-        title: input.title,
-        location: input.location ?? null,
-        startDate: input.startDate ? new Date(input.startDate) : null,
-        endDate: input.endDate === 'present' ? null : input.endDate ? new Date(input.endDate) : null,
-        text: input.text,
-        tags: input.tags,
-      },
-    });
-
-    return {
-      id: achievement.id,
-      company: achievement.company,
-      title: achievement.title,
-      location: achievement.location,
-      startDate: achievement.startDate?.toISOString().slice(0, 7) ?? null,
-      endDate: achievement.endDate?.toISOString().slice(0, 7) ?? null,
-      text: achievement.text,
-      tags: achievement.tags,
-    };
+      return {
+        success: true,
+        id: achievement.id,
+        company: achievement.company,
+        title: achievement.title,
+        location: achievement.location,
+        startDate: achievement.startDate?.toISOString().slice(0, 7) ?? null,
+        endDate: achievement.endDate?.toISOString().slice(0, 7) ?? null,
+        text: achievement.text,
+        tags: achievement.tags,
+      };
+    } catch (error) {
+      return { success: false, error: 'Failed to add achievement' };
+    }
   },
 });
 
@@ -112,31 +124,35 @@ export const addMultipleAchievements = tool({
   }),
   execute: async ({ achievements }) => {
     const userId = getTempUserId();
+    try {
+      // Ensure user exists
+      await prisma.user.upsert({
+        where: { id: userId },
+        update: {},
+        create: { id: userId, email: `${userId}@temp.local` },
+      });
 
-    // Ensure user exists
-    await prisma.user.upsert({
-      where: { id: userId },
-      update: {},
-      create: { id: userId, email: `${userId}@temp.local` },
-    });
+      const created = await prisma.achievement.createMany({
+        data: achievements.map((a) => ({
+          userId,
+          company: a.company,
+          title: a.title,
+          location: a.location ?? null,
+          startDate: a.startDate ? new Date(a.startDate) : null,
+          endDate: a.endDate === 'present' ? null : a.endDate ? new Date(a.endDate) : null,
+          text: a.text,
+          tags: a.tags,
+        })),
+      });
 
-    const created = await prisma.achievement.createMany({
-      data: achievements.map((a) => ({
-        userId,
-        company: a.company,
-        title: a.title,
-        location: a.location ?? null,
-        startDate: a.startDate ? new Date(a.startDate) : null,
-        endDate: a.endDate === 'present' ? null : a.endDate ? new Date(a.endDate) : null,
-        text: a.text,
-        tags: a.tags,
-      })),
-    });
-
-    return {
-      added: created.count,
-      message: `Successfully added ${created.count} achievements to your library.`,
-    };
+      return {
+        success: true,
+        added: created.count,
+        message: `Successfully added ${created.count} achievements to your library.`,
+      };
+    } catch (error) {
+      return { success: false, error: 'Failed to add achievements' };
+    }
   },
 });
 
@@ -148,32 +164,36 @@ export const updateAchievement = tool({
   }),
   execute: async ({ id, updates }) => {
     const userId = getTempUserId();
+    try {
+      const achievement = await prisma.achievement.update({
+        where: { id, userId },
+        data: {
+          ...(updates.company && { company: updates.company }),
+          ...(updates.title && { title: updates.title }),
+          ...(updates.location !== undefined && { location: updates.location }),
+          ...(updates.startDate && { startDate: new Date(updates.startDate) }),
+          ...(updates.endDate && {
+            endDate: updates.endDate === 'present' ? null : new Date(updates.endDate)
+          }),
+          ...(updates.text && { text: updates.text }),
+          ...(updates.tags && { tags: updates.tags }),
+        },
+      });
 
-    const achievement = await prisma.achievement.update({
-      where: { id, userId },
-      data: {
-        ...(updates.company && { company: updates.company }),
-        ...(updates.title && { title: updates.title }),
-        ...(updates.location !== undefined && { location: updates.location }),
-        ...(updates.startDate && { startDate: new Date(updates.startDate) }),
-        ...(updates.endDate && {
-          endDate: updates.endDate === 'present' ? null : new Date(updates.endDate)
-        }),
-        ...(updates.text && { text: updates.text }),
-        ...(updates.tags && { tags: updates.tags }),
-      },
-    });
-
-    return {
-      id: achievement.id,
-      company: achievement.company,
-      title: achievement.title,
-      location: achievement.location,
-      startDate: achievement.startDate?.toISOString().slice(0, 7) ?? null,
-      endDate: achievement.endDate?.toISOString().slice(0, 7) ?? null,
-      text: achievement.text,
-      tags: achievement.tags,
-    };
+      return {
+        success: true,
+        id: achievement.id,
+        company: achievement.company,
+        title: achievement.title,
+        location: achievement.location,
+        startDate: achievement.startDate?.toISOString().slice(0, 7) ?? null,
+        endDate: achievement.endDate?.toISOString().slice(0, 7) ?? null,
+        text: achievement.text,
+        tags: achievement.tags,
+      };
+    } catch (error) {
+      return { success: false, error: 'Achievement not found or update failed' };
+    }
   },
 });
 
@@ -184,11 +204,14 @@ export const deleteAchievement = tool({
   }),
   execute: async ({ id }) => {
     const userId = getTempUserId();
+    try {
+      await prisma.achievement.delete({
+        where: { id, userId },
+      });
 
-    await prisma.achievement.delete({
-      where: { id, userId },
-    });
-
-    return { deleted: true, id };
+      return { success: true, deleted: true, id };
+    } catch (error) {
+      return { success: false, error: 'Achievement not found or already deleted' };
+    }
   },
 });
