@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import {
   Sidebar,
   SidebarContent,
@@ -12,9 +14,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { MessageSquarePlus, Library, Settings, User } from 'lucide-react';
+import { UserMenu } from '@/components/auth/UserMenu';
+import { MessageSquarePlus, Library, Settings } from 'lucide-react';
 
 export function AppSidebar() {
+  const { data: session } = useSession();
+
   return (
     <Sidebar>
       <SidebarHeader className="border-b px-4 py-3">
@@ -27,10 +32,10 @@ export function AppSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <button className="w-full">
+                  <Link href="/">
                     <MessageSquarePlus className="h-4 w-4" />
                     <span>New Chat</span>
-                  </button>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -54,24 +59,27 @@ export function AppSidebar() {
       <SidebarFooter className="border-t">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton>
-              <Library className="h-4 w-4" />
-              <span>Library</span>
+            <SidebarMenuButton asChild>
+              <Link href="/library">
+                <Library className="h-4 w-4" />
+                <span>Library</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton>
-              <Settings className="h-4 w-4" />
-              <span>Settings</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton>
-              <User className="h-4 w-4" />
-              <span>Profile</span>
+            <SidebarMenuButton asChild>
+              <Link href="/settings">
+                <Settings className="h-4 w-4" />
+                <span>Settings</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        {session?.user && (
+          <div className="mt-2 pt-2 border-t">
+            <UserMenu user={session.user} />
+          </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );
