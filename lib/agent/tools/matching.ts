@@ -2,6 +2,20 @@ import { tool } from 'ai';
 import { prisma } from '@/lib/prisma';
 import { matchAchievementsInputSchema, RankedMatch, Gap } from '../schemas';
 
+/**
+ * Matching algorithm thresholds
+ */
+const MATCH_THRESHOLDS = {
+  /** Score when no tags to compare (baseline) */
+  DEFAULT_SCORE: 50,
+  /** Below this score, requirement is considered a gap */
+  GAP_THRESHOLD: 60,
+  /** Minimum score to include in results */
+  MIN_INCLUDE_SCORE: 40,
+  /** Maximum matches to return (reasonable for a resume) */
+  MAX_MATCHES: 15,
+} as const;
+
 const getTempUserId = () => process.env.TEMP_USER_ID || 'temp-user-id';
 
 interface KeyTheme {
@@ -53,7 +67,7 @@ export const matchAchievements = tool({
       // Simple scoring: percentage of required tags matched
       const score = allRequiredTags.length > 0
         ? (tagOverlap.length / allRequiredTags.length) * 100
-        : 50; // Default score if no tags specified
+        : MATCH_THRESHOLDS.DEFAULT_SCORE; // Default score if no tags specified
 
       // Find which requirements this achievement addresses
       const matchedRequirements: string[] = [];
@@ -93,7 +107,7 @@ export const matchAchievements = tool({
         )
       );
 
-      if (!bestMatch || bestMatch.score < 60) {
+      if (!bestMatch || bestMatch.score < MATCH_THRESHOLDS.GAP_THRESHOLD) {
         gaps.push({
           requirement: req,
           bestMatchScore: bestMatch?.score || 0,
@@ -104,8 +118,8 @@ export const matchAchievements = tool({
 
     // Return top matches (limit to reasonable number for resume)
     const topMatches: RankedMatch[] = scoredAchievements
-      .filter((a) => a.score >= 40)
-      .slice(0, 15)
+      .filter((a) => a.score >= MATCH_THRESHOLDS.MIN_INCLUDE_SCORE)
+      .slice(0, MATCH_THRESHOLDS.MAX_MATCHES)
       .map(({ achievementId, achievementText, company, title, score, matchedRequirements }) => ({
         achievementId,
         achievementText,
