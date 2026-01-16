@@ -164,3 +164,55 @@ export type Preferences = z.infer<typeof preferencesSchema>;
 export const updatePreferencesInputSchema = preferencesSchema.partial();
 
 export type UpdatePreferencesInput = z.infer<typeof updatePreferencesInputSchema>;
+
+// ============================================================================
+// JSON Input Validation Schemas
+// These schemas validate JSON strings passed as tool parameters
+// ============================================================================
+
+/**
+ * Schema for success profile used in matching
+ */
+export const keyThemeSchema = z.object({
+  theme: z.string(),
+  tags: z.array(z.string()),
+});
+
+export const successProfileInputSchema = z.object({
+  mustHave: z.array(z.string()),
+  niceToHave: z.array(z.string()).optional(),
+  keyThemes: z.array(keyThemeSchema).optional(),
+});
+
+export type KeyTheme = z.infer<typeof keyThemeSchema>;
+export type SuccessProfileInput = z.infer<typeof successProfileInputSchema>;
+
+/**
+ * Schema for matched achievements array used in generation
+ */
+export const matchedAchievementSchema = z.object({
+  achievementId: z.string(),
+  achievementText: z.string(),
+  company: z.string(),
+  title: z.string(),
+  score: z.number(),
+  matchedRequirements: z.array(z.string()),
+  location: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
+
+export const matchedAchievementsArraySchema = z.array(matchedAchievementSchema);
+export type MatchedAchievement = z.infer<typeof matchedAchievementSchema>;
+
+/**
+ * Schema for parsed requirements in research tools
+ */
+export const parsedRequirementSchema = z.object({
+  text: z.string(),
+  type: z.enum(['must_have', 'nice_to_have']),
+  tags: z.array(z.string()).optional(),
+});
+
+export const parsedRequirementsArraySchema = z.array(parsedRequirementSchema);
+export type ParsedRequirement = z.infer<typeof parsedRequirementSchema>;
