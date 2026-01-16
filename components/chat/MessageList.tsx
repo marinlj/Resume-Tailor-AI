@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import type { UIMessage } from 'ai';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MarkdownContent } from './MarkdownContent';
@@ -11,6 +12,12 @@ interface MessageListProps {
 }
 
 export function MessageList({ messages, status }: MessageListProps) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, status]);
+
   if (messages.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -57,6 +64,7 @@ export function MessageList({ messages, status }: MessageListProps) {
             <div className="animate-pulse">Thinking...</div>
           </div>
         )}
+        <div ref={bottomRef} />
       </div>
     </ScrollArea>
   );
