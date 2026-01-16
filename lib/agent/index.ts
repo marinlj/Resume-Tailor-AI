@@ -10,6 +10,7 @@ import {
   addMultipleAchievements,
   updateAchievement,
   deleteAchievement,
+  parseResumeIntoLibrary,
 } from './tools/library';
 
 // Research tools
@@ -44,6 +45,7 @@ export const resumeAgent = new ToolLoopAgent({
     addMultipleAchievements,
     updateAchievement,
     deleteAchievement,
+    parseResumeIntoLibrary,
 
     // Research
     parseJobDescription,
