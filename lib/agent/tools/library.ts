@@ -492,13 +492,14 @@ export const updateContactDetails = tool({
 });
 
 export const parseResumeIntoLibrary = tool({
-  description: `Parse a raw resume text and extract ALL sections: work experiences (achievements), skills, and education. Returns structured data for the LLM to process.
+  description: `Parse a raw resume text and extract ALL sections: contact details, work experiences (achievements), skills, and education. Returns structured data for the LLM to process.
 
 The LLM should:
-1. Parse the resume text to identify work experiences and extract achievements
-2. Extract all skills from the skills/technical skills section
-3. Extract all education entries
-4. Call the appropriate tools to add each type of data`,
+1. Extract contact details from the resume header
+2. Parse the resume text to identify work experiences and extract achievements
+3. Extract all skills from the skills/technical skills section
+4. Extract all education entries
+5. Call the appropriate tools to add each type of data`,
   inputSchema: z.object({
     resumeText: z.string().describe('Raw resume text to parse'),
   }),
@@ -508,6 +509,19 @@ The LLM should:
     return {
       success: true,
       instruction: `Parse the following resume text and extract ALL information into the library.
+
+## 0. CONTACT DETAILS (Header)
+Extract from the resume header:
+- Full name
+- Email address
+- Phone number (if present)
+- Location (City, State/Country if present)
+- LinkedIn URL (if present)
+- Portfolio/website URL (if present)
+- GitHub URL (if present)
+- Professional headline (if present, e.g., "Senior Software Engineer")
+
+Call \`updateContactDetails\` with the extracted contact information.
 
 ## 1. WORK EXPERIENCE (Achievements)
 For each work experience section:
@@ -547,6 +561,7 @@ Call \`addEducation\` with the extracted education data.
 
 ## IMPORTANT
 - Extract EVERYTHING from the resume - don't skip any sections
+- Contact details are typically at the very top of the resume
 - If a section is not present in the resume, that's fine - just skip that tool call
 - Present ALL extracted data to the user for confirmation before calling the add tools
 
@@ -555,6 +570,7 @@ Resume text to parse:
 ${resumeText}
 ---`,
       schema: {
+        contactDetails: '{ fullName, email, phone?, location?, linkedinUrl?, portfolioUrl?, githubUrl?, headline? }',
         achievements: 'array of { company, title, location?, startDate (YYYY-MM), endDate (YYYY-MM or "present"), text, tags[] }',
         skills: 'array of { name, category?, level? }',
         education: 'array of { institution, degree, field?, location?, startDate?, endDate?, gpa?, honors?, activities[]? }',
