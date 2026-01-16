@@ -35,6 +35,54 @@ export const achievementOutputSchema = z.object({
 
 export type AchievementOutput = z.infer<typeof achievementOutputSchema>;
 
+// Skill
+export const skillInputSchema = z.object({
+  name: z.string().describe('Skill name'),
+  category: z.string().optional().describe('Category (e.g., "Programming Languages", "Frameworks", "Tools", "Soft Skills")'),
+  level: z.string().optional().describe('Proficiency level (e.g., "Expert", "Advanced", "Intermediate", "Beginner")'),
+});
+
+export type SkillInput = z.infer<typeof skillInputSchema>;
+
+export const skillOutputSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  category: z.string().nullable(),
+  level: z.string().nullable(),
+});
+
+export type SkillOutput = z.infer<typeof skillOutputSchema>;
+
+// Education
+export const educationInputSchema = z.object({
+  institution: z.string().describe('Name of the school/university'),
+  degree: z.string().describe('Degree type (e.g., "Bachelor of Science", "Master of Arts")'),
+  field: z.string().optional().describe('Field of study (e.g., "Computer Science")'),
+  location: z.string().optional().describe('Location of the institution'),
+  startDate: z.string().optional().describe('Start date (YYYY-MM format)'),
+  endDate: z.string().optional().describe('End date (YYYY-MM format) or "present"'),
+  gpa: z.string().optional().describe('GPA if notable'),
+  honors: z.string().optional().describe('Honors or distinctions (e.g., "Magna Cum Laude")'),
+  activities: z.array(z.string()).optional().describe('Relevant activities, clubs, coursework'),
+});
+
+export type EducationInput = z.infer<typeof educationInputSchema>;
+
+export const educationOutputSchema = z.object({
+  id: z.string(),
+  institution: z.string(),
+  degree: z.string(),
+  field: z.string().nullable(),
+  location: z.string().nullable(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  gpa: z.string().nullable(),
+  honors: z.string().nullable(),
+  activities: z.array(z.string()),
+});
+
+export type EducationOutput = z.infer<typeof educationOutputSchema>;
+
 // Parse Resume
 export const parseResumeInputSchema = z.object({
   text: z.string().describe('The full resume text to parse'),
@@ -216,3 +264,34 @@ export const parsedRequirementSchema = z.object({
 
 export const parsedRequirementsArraySchema = z.array(parsedRequirementSchema);
 export type ParsedRequirement = z.infer<typeof parsedRequirementSchema>;
+
+// ============================================================================
+// Contact Details
+// ============================================================================
+
+export const contactDetailsInputSchema = z.object({
+  fullName: z.string().describe('Full name as it should appear on resume'),
+  email: z.string().email().describe('Professional email address'),
+  phone: z.string().optional().describe('Phone number'),
+  location: z.string().optional().describe('Location (City, State/Country)'),
+  linkedinUrl: z.string().url().optional().describe('LinkedIn profile URL'),
+  portfolioUrl: z.string().url().optional().describe('Portfolio or personal website URL'),
+  githubUrl: z.string().url().optional().describe('GitHub profile URL'),
+  headline: z.string().optional().describe('Professional headline (e.g., "Senior Software Engineer")'),
+});
+
+export type ContactDetailsInput = z.infer<typeof contactDetailsInputSchema>;
+
+export const contactDetailsOutputSchema = z.object({
+  id: z.string(),
+  fullName: z.string(),
+  email: z.string(),
+  phone: z.string().nullable(),
+  location: z.string().nullable(),
+  linkedinUrl: z.string().nullable(),
+  portfolioUrl: z.string().nullable(),
+  githubUrl: z.string().nullable(),
+  headline: z.string().nullable(),
+});
+
+export type ContactDetailsOutput = z.infer<typeof contactDetailsOutputSchema>;
