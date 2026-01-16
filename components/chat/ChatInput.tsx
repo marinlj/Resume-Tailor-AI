@@ -5,6 +5,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { SendHorizontal, Paperclip, X } from 'lucide-react';
 
+const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const ACCEPTED_FILE_TYPES = '.txt,.md';
+
 interface ChatInputProps {
   input: string;
   setInput: (value: string) => void;
@@ -34,6 +38,11 @@ export function ChatInput({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        alert(`File size exceeds ${MAX_FILE_SIZE_MB}MB limit`);
+        e.target.value = '';
+        return;
+      }
       onFileAttach(file);
     }
   };
@@ -68,6 +77,7 @@ export function ChatInput({
               size="icon"
               className="h-6 w-6"
               onClick={() => onFileAttach(null)}
+              aria-label="Remove attached file"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -77,9 +87,10 @@ export function ChatInput({
           <input
             ref={fileInputRef}
             type="file"
-            accept=".txt,.md,.pdf,.doc,.docx"
+            accept={ACCEPTED_FILE_TYPES}
             onChange={handleFileChange}
             className="hidden"
+            aria-label="Attach file"
           />
           <Button
             type="button"
@@ -87,6 +98,7 @@ export function ChatInput({
             size="icon"
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
+            aria-label="Attach file"
           >
             <Paperclip className="h-4 w-4" />
           </Button>
@@ -99,7 +111,12 @@ export function ChatInput({
             className="min-h-[60px] resize-none"
             disabled={isLoading}
           />
-          <Button type="submit" size="icon" disabled={isLoading || (!input.trim() && !attachedFile)}>
+          <Button
+            type="submit"
+            size="icon"
+            disabled={isLoading || (!input.trim() && !attachedFile)}
+            aria-label="Send message"
+          >
             <SendHorizontal className="h-4 w-4" />
           </Button>
         </div>

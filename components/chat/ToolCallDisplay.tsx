@@ -6,8 +6,6 @@ import { CheckCircle, Loader2 } from 'lucide-react';
 interface ToolCallDisplayProps {
   toolName: string;
   state: string;
-  input?: unknown;
-  output?: unknown;
 }
 
 const toolLabels: Record<string, string> = {
@@ -15,6 +13,9 @@ const toolLabels: Record<string, string> = {
   getAchievements: 'Fetching achievements',
   addAchievement: 'Adding achievement',
   addMultipleAchievements: 'Adding achievements',
+  parseResumeIntoLibrary: 'Parsing resume',
+  updateAchievement: 'Updating achievement',
+  deleteAchievement: 'Deleting achievement',
   parseJobDescription: 'Analyzing job description',
   buildSuccessProfile: 'Building success profile',
   matchAchievements: 'Matching achievements',
@@ -24,7 +25,7 @@ const toolLabels: Record<string, string> = {
   updatePreferences: 'Updating preferences',
 };
 
-export function ToolCallDisplay({ toolName, state, input, output }: ToolCallDisplayProps) {
+export function ToolCallDisplay({ toolName, state }: ToolCallDisplayProps) {
   const label = toolLabels[toolName] || toolName;
   const isComplete = state === 'output-available';
 

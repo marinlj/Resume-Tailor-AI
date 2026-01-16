@@ -6,7 +6,25 @@ import { isToolUIPart, getToolName } from 'ai';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MarkdownContent } from './MarkdownContent';
 import { ToolCallDisplay } from './ToolCallDisplay';
+import { FileCard } from './FileCard';
 import { cn } from '@/lib/utils';
+
+interface DocxToolOutput {
+  success: boolean;
+  downloadUrl?: string;
+  filename?: string;
+}
+
+function isDocxOutput(output: unknown): output is DocxToolOutput {
+  return (
+    typeof output === 'object' &&
+    output !== null &&
+    'success' in output &&
+    (output as DocxToolOutput).success === true &&
+    'downloadUrl' in output &&
+    typeof (output as DocxToolOutput).downloadUrl === 'string'
+  );
+}
 
 interface MessageListProps {
   messages: UIMessage[];
@@ -58,13 +76,29 @@ export function MessageList({ messages, status }: MessageListProps) {
                 }
                 if (isToolUIPart(part)) {
                   const toolName = getToolName(part);
+                  const output = 'output' in part ? part.output : undefined;
+
+                  // Show FileCard for successful DOCX generation
+                  if (
+                    toolName === 'generateDocxFile' &&
+                    part.state === 'output-available' &&
+                    isDocxOutput(output)
+                  ) {
+                    return (
+                      <FileCard
+                        key={i}
+                        filename={output.filename || 'Resume.docx'}
+                        downloadUrl={output.downloadUrl!}
+                        type="docx"
+                      />
+                    );
+                  }
+
                   return (
                     <ToolCallDisplay
                       key={i}
                       toolName={toolName}
                       state={part.state}
-                      input={'input' in part ? part.input : undefined}
-                      output={'output' in part ? part.output : undefined}
                     />
                   );
                 }
