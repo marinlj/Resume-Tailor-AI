@@ -215,3 +215,46 @@ export const deleteAchievement = tool({
     }
   },
 });
+
+export const parseResumeIntoLibrary = tool({
+  description: `Parse a raw resume text and extract achievements. Returns structured data for the LLM to process.
+
+The LLM should:
+1. Parse the resume text to identify work experiences
+2. Extract each achievement/bullet point with its associated role
+3. Suggest relevant tags for each achievement
+4. Call addMultipleAchievements with the parsed data`,
+  inputSchema: z.object({
+    resumeText: z.string().describe('Raw resume text to parse'),
+  }),
+  execute: async ({ resumeText }) => {
+    // This is a "prompt tool" - it returns instructions for the LLM
+    // The actual parsing is done by the LLM's reasoning capability
+    return {
+      success: true,
+      instruction: `Parse the following resume text and extract achievements.
+
+For each work experience section:
+1. Identify the company, title, location, and dates
+2. Extract each bullet point as a separate achievement
+3. Suggest 2-5 tags for each achievement from this list:
+   - Technical: engineering, technical, architecture, api, database, cloud, infrastructure, ai, ml, llm
+   - Leadership: leadership, management, mentoring, team-building, cross-functional, hiring
+   - Data: data, analytics, metrics, reporting, a/b-testing, data-driven
+   - Product: product, roadmap, strategy, prioritization, user-research, mvp
+   - Communication: communication, stakeholder, presentation, documentation
+   - Impact: cost-reduction, revenue, efficiency, automation, scale, growth
+   - Process: agile, scrum, process-improvement, optimization
+
+After parsing, call addMultipleAchievements with the extracted data.
+
+Resume text to parse:
+---
+${resumeText}
+---`,
+      schema: {
+        achievements: 'array of { company, title, location?, startDate (YYYY-MM), endDate (YYYY-MM or "present"), text, tags[] }',
+      },
+    };
+  },
+});
