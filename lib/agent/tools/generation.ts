@@ -5,8 +5,8 @@ import { Packer } from 'docx';
 import { generateDocx, parseMarkdownToResumeData } from '@/lib/docx/generator';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-
-const getTempUserId = () => process.env.TEMP_USER_ID || 'temp-user-id';
+import { matchedAchievementsArraySchema } from '../schemas';
+import { getTempUserId, safeJsonParse, sanitizeFilename } from './utils';
 
 export const generateResume = tool({
   description: 'Generate a tailored resume markdown from matched achievements. Call this after matchAchievements.',
@@ -33,7 +33,16 @@ export const generateResume = tool({
     userLinkedin,
   }) => {
     const userId = getTempUserId();
-    const matches = JSON.parse(matchedAchievementsJson);
+
+    // Validate JSON input
+    const parseResult = safeJsonParse(matchedAchievementsJson, matchedAchievementsArraySchema);
+    if (!parseResult.data) {
+      return {
+        success: false,
+        error: parseResult.error,
+      };
+    }
+    const matches = parseResult.data;
 
     // Group matches by company/role
     const groupedByRole = new Map<string, typeof matches>();
@@ -48,16 +57,13 @@ export const generateResume = tool({
     // Build markdown
     let markdown = `# ${userName}\n\n`;
 
-    // Contact line
     const contactParts = [userEmail, userPhone, userLocation, userLinkedin].filter(Boolean);
     markdown += `${contactParts.join(' | ')}\n\n`;
 
-    // Summary
     if (summary) {
       markdown += `## Summary\n\n${summary}\n\n`;
     }
 
-    // Experience
     markdown += `## Professional Experience\n\n`;
 
     for (const [key, roleMatches] of groupedByRole) {
@@ -74,20 +80,28 @@ export const generateResume = tool({
     }
 
     // Save to database
-    const resume = await prisma.generatedResume.create({
-      data: {
-        userId,
-        targetCompany,
-        targetRole,
-        markdown,
-      },
-    });
+    try {
+      const resume = await prisma.generatedResume.create({
+        data: {
+          userId,
+          targetCompany,
+          targetRole,
+          markdown,
+        },
+      });
 
-    return {
-      id: resume.id,
-      markdown,
-      message: `Resume generated for ${targetRole} at ${targetCompany}. Use generateDocxFile to create a downloadable Word document.`,
-    };
+      return {
+        success: true,
+        id: resume.id,
+        markdown,
+        message: `Resume generated for ${targetRole} at ${targetCompany}. Use generateDocxFile to create a downloadable Word document.`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Failed to save resume to database',
+      };
+    }
   },
 });
 
@@ -99,41 +113,60 @@ export const generateDocxFile = tool({
   execute: async ({ resumeId }) => {
     const userId = getTempUserId();
 
-    const resume = await prisma.generatedResume.findFirst({
-      where: { id: resumeId, userId },
-    });
-
-    if (!resume) {
-      return { error: 'Resume not found' };
+    let resume;
+    try {
+      resume = await prisma.generatedResume.findFirst({
+        where: { id: resumeId, userId },
+      });
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Failed to fetch resume from database',
+      };
     }
 
-    // Parse markdown to structured data
-    const resumeData = parseMarkdownToResumeData(resume.markdown);
+    if (!resume) {
+      return {
+        success: false,
+        error: 'Resume not found',
+      };
+    }
 
-    // Generate DOCX
-    const doc = generateDocx(resumeData);
-    const buffer = await Packer.toBuffer(doc);
+    try {
+      // Parse markdown to structured data
+      const resumeData = parseMarkdownToResumeData(resume.markdown);
 
-    // Save file
-    const uploadsDir = path.join(process.cwd(), 'public', 'resumes');
-    await mkdir(uploadsDir, { recursive: true });
+      // Generate DOCX
+      const doc = generateDocx(resumeData);
+      const buffer = await Packer.toBuffer(doc);
 
-    const filename = `${resumeData.name.replace(/\s+/g, '_')}_${resume.targetCompany.replace(/\s+/g, '_')}_${resume.targetRole.replace(/\s+/g, '_')}_Resume.docx`;
-    const filepath = path.join(uploadsDir, filename);
+      // Save file with sanitized filename
+      const uploadsDir = path.join(process.cwd(), 'public', 'resumes');
+      await mkdir(uploadsDir, { recursive: true });
 
-    await writeFile(filepath, buffer);
+      const filename = `${sanitizeFilename(resumeData.name)}_${sanitizeFilename(resume.targetCompany)}_${sanitizeFilename(resume.targetRole)}_Resume.docx`;
+      const filepath = path.join(uploadsDir, filename);
 
-    // Update database with file path
-    const downloadUrl = `/resumes/${filename}`;
-    await prisma.generatedResume.update({
-      where: { id: resumeId },
-      data: { docxUrl: downloadUrl },
-    });
+      await writeFile(filepath, buffer);
 
-    return {
-      downloadUrl,
-      filename,
-      message: `DOCX file generated: ${filename}`,
-    };
+      // Update database with file path
+      const downloadUrl = `/resumes/${filename}`;
+      await prisma.generatedResume.update({
+        where: { id: resumeId },
+        data: { docxUrl: downloadUrl },
+      });
+
+      return {
+        success: true,
+        downloadUrl,
+        filename,
+        message: `DOCX file generated: ${filename}`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to generate DOCX file',
+      };
+    }
   },
 });
