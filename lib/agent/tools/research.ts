@@ -1,6 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { parseJDInputSchema } from '../schemas';
+import { parseJDInputSchema, parsedRequirementsArraySchema } from '../schemas';
+import { safeJsonParse } from './utils';
 
 export const parseJobDescription = tool({
   description: 'Parse a job description to extract requirements, keywords, and role information. Call this when user provides a job description.',
@@ -34,31 +35,49 @@ export const buildSuccessProfile = tool({
     companyContext: z.string().optional().describe('Additional company context if available'),
   }),
   execute: async ({ company, role, requirements, keywords, companyContext }) => {
-    const parsedRequirements = JSON.parse(requirements);
-    const parsedKeywords = JSON.parse(keywords);
+    // Validate requirements JSON
+    const reqResult = safeJsonParse(requirements, parsedRequirementsArraySchema);
+    if (!reqResult.data) {
+      return {
+        success: false,
+        error: `Invalid requirements: ${reqResult.error}`,
+      };
+    }
+    const parsedRequirements = reqResult.data;
+
+    // Validate keywords JSON
+    const keywordsResult = safeJsonParse(keywords, z.array(z.string()));
+    if (!keywordsResult.data) {
+      return {
+        success: false,
+        error: `Invalid keywords: ${keywordsResult.error}`,
+      };
+    }
+    const parsedKeywords = keywordsResult.data;
 
     const mustHave = parsedRequirements
-      .filter((r: any) => r.type === 'must_have')
-      .map((r: any) => r.text);
+      .filter((r) => r.type === 'must_have')
+      .map((r) => r.text);
 
     const niceToHave = parsedRequirements
-      .filter((r: any) => r.type === 'nice_to_have')
-      .map((r: any) => r.text);
+      .filter((r) => r.type === 'nice_to_have')
+      .map((r) => r.text);
 
     // Extract unique tags from requirements
-    const allTags = parsedRequirements.flatMap((r: any) => r.tags || []);
+    const allTags = parsedRequirements.flatMap((r) => r.tags || []);
     const uniqueTags = [...new Set(allTags)] as string[];
 
     // Group by theme
     const themes = groupTagsByTheme(uniqueTags);
 
     return {
+      success: true,
       company,
       role,
       mustHave,
       niceToHave,
       keyThemes: themes,
-      terminology: [], // LLM will populate based on JD language
+      terminology: [],
       keywords: parsedKeywords,
       companyContext: companyContext || null,
     };
