@@ -1,0 +1,166 @@
+import { z } from 'zod';
+
+// Library Status
+export const libraryStatusOutputSchema = z.object({
+  exists: z.boolean(),
+  count: z.number(),
+  lastUpdated: z.string().nullable(),
+});
+
+export type LibraryStatusOutput = z.infer<typeof libraryStatusOutputSchema>;
+
+// Achievement
+export const achievementInputSchema = z.object({
+  company: z.string().describe('Company name'),
+  title: z.string().describe('Job title'),
+  location: z.string().optional().describe('Location (city, state/country)'),
+  startDate: z.string().optional().describe('Start date (YYYY-MM format)'),
+  endDate: z.string().optional().describe('End date (YYYY-MM format) or "present"'),
+  text: z.string().describe('The achievement bullet text'),
+  tags: z.array(z.string()).describe('Tags for matching (e.g., leadership, metrics, cost-reduction)'),
+});
+
+export type AchievementInput = z.infer<typeof achievementInputSchema>;
+
+export const achievementOutputSchema = z.object({
+  id: z.string(),
+  company: z.string(),
+  title: z.string(),
+  location: z.string().nullable(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  text: z.string(),
+  tags: z.array(z.string()),
+});
+
+export type AchievementOutput = z.infer<typeof achievementOutputSchema>;
+
+// Parse Resume
+export const parseResumeInputSchema = z.object({
+  text: z.string().describe('The full resume text to parse'),
+});
+
+export const parsedAchievementSchema = z.object({
+  company: z.string(),
+  title: z.string(),
+  location: z.string().nullable(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  text: z.string(),
+  suggestedTags: z.array(z.string()),
+});
+
+export type ParsedAchievement = z.infer<typeof parsedAchievementSchema>;
+
+// Job Description
+export const parseJDInputSchema = z.object({
+  text: z.string().describe('The job description text'),
+});
+
+export const requirementSchema = z.object({
+  text: z.string(),
+  type: z.enum(['must_have', 'nice_to_have']),
+  tags: z.array(z.string()),
+});
+
+export type Requirement = z.infer<typeof requirementSchema>;
+
+export const parsedJDOutputSchema = z.object({
+  company: z.string(),
+  role: z.string(),
+  location: z.string().nullable(),
+  requirements: z.array(requirementSchema),
+  keywords: z.array(z.string()),
+  roleType: z.string(),
+});
+
+export type ParsedJDOutput = z.infer<typeof parsedJDOutputSchema>;
+
+// Success Profile
+export const successProfileSchema = z.object({
+  company: z.string(),
+  role: z.string(),
+  mustHave: z.array(z.string()),
+  niceToHave: z.array(z.string()),
+  keyThemes: z.array(z.object({
+    theme: z.string(),
+    tags: z.array(z.string()),
+  })),
+  terminology: z.array(z.object({
+    theirTerm: z.string(),
+    yourTerm: z.string(),
+  })),
+});
+
+export type SuccessProfile = z.infer<typeof successProfileSchema>;
+
+// Matching
+export const matchAchievementsInputSchema = z.object({
+  profileJson: z.string().describe('JSON string of the success profile'),
+});
+
+export const rankedMatchSchema = z.object({
+  achievementId: z.string(),
+  achievementText: z.string(),
+  company: z.string(),
+  title: z.string(),
+  score: z.number(),
+  matchedRequirements: z.array(z.string()),
+});
+
+export type RankedMatch = z.infer<typeof rankedMatchSchema>;
+
+export const gapSchema = z.object({
+  requirement: z.string(),
+  bestMatchScore: z.number(),
+  bestMatchText: z.string().nullable(),
+});
+
+export type Gap = z.infer<typeof gapSchema>;
+
+export const matchOutputSchema = z.object({
+  matches: z.array(rankedMatchSchema),
+  gaps: z.array(gapSchema),
+});
+
+export type MatchOutput = z.infer<typeof matchOutputSchema>;
+
+// Resume Generation
+export const generateResumeInputSchema = z.object({
+  matchesJson: z.string().describe('JSON string of ranked matches to include'),
+  targetCompany: z.string().describe('Target company name'),
+  targetRole: z.string().describe('Target role title'),
+  summary: z.string().optional().describe('Optional professional summary'),
+});
+
+export const generateResumeOutputSchema = z.object({
+  id: z.string(),
+  markdown: z.string(),
+});
+
+export type GenerateResumeOutput = z.infer<typeof generateResumeOutputSchema>;
+
+// DOCX Generation
+export const generateDocxInputSchema = z.object({
+  resumeId: z.string().describe('ID of the generated resume'),
+});
+
+export const generateDocxOutputSchema = z.object({
+  downloadUrl: z.string(),
+});
+
+export type GenerateDocxOutput = z.infer<typeof generateDocxOutputSchema>;
+
+// Preferences
+export const preferencesSchema = z.object({
+  includeSummary: z.boolean(),
+  includeRoleSummaries: z.boolean(),
+  boldPattern: z.enum(['action_only', 'action_and_kpi']),
+  format: z.enum(['company_location_dates', 'title_company_dates']),
+});
+
+export type Preferences = z.infer<typeof preferencesSchema>;
+
+export const updatePreferencesInputSchema = preferencesSchema.partial();
+
+export type UpdatePreferencesInput = z.infer<typeof updatePreferencesInputSchema>;
