@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+
+  achievements  Achievement[]
+  preferences   Preference?
+  conversations Conversation[]
+  resumes       GeneratedResume[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Achievement {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  company   String
+  title     String
+  location  String?
+  startDate DateTime?
+  endDate   DateTime?
+
+  text      String
+  tags      String[]
+  metrics   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Preference {
+  id                   String  @id @default(cuid())
+  userId               String  @unique
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  includeSummary       Boolean @default(true)
+  includeRoleSummaries Boolean @default(true)
+  boldPattern          String  @default("action_and_kpi")
+  format               String  @default("company_location_dates")
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title     String?
+  messages  Json     @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model GeneratedResume {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversationId String?
+
+  targetCompany  String
+  targetRole     String
+  markdown       String
+  docxUrl        String?
+
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+}

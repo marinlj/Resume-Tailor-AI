@@ -47,3 +47,5 @@ prisma/*.db-journal
 # IDE
 .idea/
 .vscode/
+
+/app/generated/prisma
