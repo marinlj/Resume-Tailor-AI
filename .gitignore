@@ -49,3 +49,6 @@ prisma/*.db-journal
 .vscode/
 
 /app/generated/prisma
+
+# Generated resume files
+public/resumes/
