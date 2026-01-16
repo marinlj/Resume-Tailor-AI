@@ -9,10 +9,23 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const achievements = await prisma.achievement.findMany({
-    where: { userId: session.user.id },
-    orderBy: [{ company: 'asc' }, { startDate: 'desc' }],
-  });
+  const [contactDetails, achievements, skills, education] = await Promise.all([
+    prisma.contactDetails.findUnique({
+      where: { userId: session.user.id },
+    }),
+    prisma.achievement.findMany({
+      where: { userId: session.user.id },
+      orderBy: [{ company: 'asc' }, { startDate: 'desc' }],
+    }),
+    prisma.skill.findMany({
+      where: { userId: session.user.id },
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
+    }),
+    prisma.education.findMany({
+      where: { userId: session.user.id },
+      orderBy: { endDate: 'desc' },
+    }),
+  ]);
 
-  return NextResponse.json({ achievements });
+  return NextResponse.json({ contactDetails, achievements, skills, education });
 }
