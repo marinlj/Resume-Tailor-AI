@@ -2,13 +2,22 @@
 
 import { useChat } from '@ai-sdk/react';
 import { useState } from 'react';
+import type { UIMessage } from 'ai';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 
-export function ChatContainer() {
+interface ChatContainerProps {
+  conversationId?: string;
+  initialMessages?: UIMessage[];
+}
+
+export function ChatContainer({ conversationId, initialMessages }: ChatContainerProps) {
   const [input, setInput] = useState('');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
-  const { messages, sendMessage, status } = useChat();
+  const { messages, sendMessage, status } = useChat({
+    id: conversationId,
+    messages: initialMessages,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -15,6 +15,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { UserMenu } from '@/components/auth/UserMenu';
+import { ConversationList } from '@/components/layout/ConversationList';
 import { MessageSquarePlus, Library, Settings } from 'lucide-react';
 
 export function AppSidebar() {
@@ -46,11 +47,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>History</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton>
-                  <span className="text-muted-foreground text-sm">No conversations yet</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              <ConversationList />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
