@@ -10,7 +10,13 @@ import {
   addMultipleAchievements,
   updateAchievement,
   deleteAchievement,
+  getSkills,
+  addSkills,
+  getEducation,
+  addEducation,
   parseResumeIntoLibrary,
+  getContactDetails,
+  updateContactDetails,
 } from './tools/library';
 
 // Research tools
@@ -38,13 +44,27 @@ export const resumeAgent = new ToolLoopAgent({
   model: anthropic('claude-opus-4-5-20251101'),
   instructions: RESUME_AGENT_INSTRUCTIONS,
   tools: {
-    // Library management
+    // Library management - Achievements
     getLibraryStatus,
     getAchievements,
     addAchievement,
     addMultipleAchievements,
     updateAchievement,
     deleteAchievement,
+
+    // Library management - Skills
+    getSkills,
+    addSkills,
+
+    // Library management - Education
+    getEducation,
+    addEducation,
+
+    // Library management - Contact Details
+    getContactDetails,
+    updateContactDetails,
+
+    // Library management - Parsing
     parseResumeIntoLibrary,
 
     // Research
