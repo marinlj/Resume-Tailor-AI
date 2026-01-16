@@ -15,11 +15,14 @@ export const generateResume = tool({
     targetRole: z.string().describe('Target role title'),
     matchedAchievementsJson: z.string().describe('JSON string of matched achievements to include'),
     summary: z.string().optional().describe('Professional summary paragraph'),
-    userName: z.string().describe('User full name'),
-    userEmail: z.string().describe('User email'),
+    // Contact details - optional, will fetch from library if not provided
+    userName: z.string().optional().describe('User full name (optional - fetched from library if not provided)'),
+    userEmail: z.string().optional().describe('User email (optional - fetched from library if not provided)'),
     userPhone: z.string().optional().describe('User phone number'),
     userLocation: z.string().optional().describe('User location (City, State)'),
     userLinkedin: z.string().optional().describe('User LinkedIn URL'),
+    userPortfolio: z.string().optional().describe('User portfolio URL'),
+    userGithub: z.string().optional().describe('User GitHub URL'),
   }),
   execute: async ({
     targetCompany,
@@ -31,8 +34,43 @@ export const generateResume = tool({
     userPhone,
     userLocation,
     userLinkedin,
+    userPortfolio,
+    userGithub,
   }) => {
     const userId = getTempUserId();
+
+    // Fetch contact details from library if not provided
+    let contactName = userName;
+    let contactEmail = userEmail;
+    let contactPhone = userPhone;
+    let contactLocation = userLocation;
+    let contactLinkedin = userLinkedin;
+    let contactPortfolio = userPortfolio;
+    let contactGithub = userGithub;
+
+    if (!contactName || !contactEmail) {
+      const libraryContact = await prisma.contactDetails.findUnique({
+        where: { userId },
+      });
+
+      if (libraryContact) {
+        contactName = contactName || libraryContact.fullName;
+        contactEmail = contactEmail || libraryContact.email;
+        contactPhone = contactPhone || libraryContact.phone || undefined;
+        contactLocation = contactLocation || libraryContact.location || undefined;
+        contactLinkedin = contactLinkedin || libraryContact.linkedinUrl || undefined;
+        contactPortfolio = contactPortfolio || libraryContact.portfolioUrl || undefined;
+        contactGithub = contactGithub || libraryContact.githubUrl || undefined;
+      }
+    }
+
+    // Validate required contact details
+    if (!contactName || !contactEmail) {
+      return {
+        success: false,
+        error: 'Missing contact details. Please provide userName and userEmail, or save contact details to your library first using updateContactDetails.',
+      };
+    }
 
     // Validate JSON input
     const parseResult = safeJsonParse(matchedAchievementsJson, matchedAchievementsArraySchema);
@@ -55,9 +93,12 @@ export const generateResume = tool({
     }
 
     // Build markdown
-    let markdown = `# ${userName}\n\n`;
+    let markdown = `# ${contactName}\n\n`;
 
-    const contactParts = [userEmail, userPhone, userLocation, userLinkedin].filter(Boolean);
+    const contactParts = [contactEmail, contactPhone, contactLocation].filter(Boolean);
+    if (contactLinkedin) contactParts.push(contactLinkedin);
+    if (contactPortfolio) contactParts.push(contactPortfolio);
+    if (contactGithub) contactParts.push(contactGithub);
     markdown += `${contactParts.join(' | ')}\n\n`;
 
     if (summary) {
