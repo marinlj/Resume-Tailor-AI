@@ -5,7 +5,7 @@ import { Packer } from 'docx';
 import { generateDocx, parseMarkdownToResumeData } from '@/lib/docx/generator';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import { matchedAchievementsArraySchema } from '../schemas';
+import { matchedAchievementsArraySchema, ResumeSection } from '../schemas';
 import { getTempUserId, safeJsonParse, sanitizeFilename } from './utils';
 
 export const generateResume = tool({
@@ -72,6 +72,21 @@ export const generateResume = tool({
       };
     }
 
+    // Fetch resume structure preference
+    const structure = await prisma.resumeStructure.findUnique({
+      where: { userId },
+    });
+
+    // Parse sections from structure if it exists
+    const sections: ResumeSection[] = structure?.sections
+      ? (structure.sections as ResumeSection[])
+      : [
+          { type: 'summary', label: 'Summary' },
+          { type: 'experience', label: 'Professional Experience' },
+          { type: 'skill', label: 'Skills' },
+          { type: 'education', label: 'Education' },
+        ];
+
     // Validate JSON input
     const parseResult = safeJsonParse(matchedAchievementsJson, matchedAchievementsArraySchema);
     if (!parseResult.data) {
@@ -113,28 +128,39 @@ export const generateResume = tool({
     if (contactGithub) contactParts.push(contactGithub);
     markdown += `${contactParts.join(' | ')}\n\n`;
 
-    if (summary) {
-      markdown += `## Summary\n\n${summary}\n\n`;
-    }
-
-    markdown += `## Professional Experience\n\n`;
-
-    for (const [key, roleMatches] of groupedByRole) {
-      const [company, title] = key.split('|');
-      const firstMatch = roleMatches[0];
-
-      markdown += `**${company}**${firstMatch.location ? ` | ${firstMatch.location}` : ''}\n`;
-      markdown += `${title}${firstMatch.startDate ? `, ${firstMatch.startDate} - ${firstMatch.endDate || 'Present'}` : ''}\n\n`;
-
-      for (const match of roleMatches) {
-        markdown += `- ${match.achievementText}\n`;
+    // Helper function to generate summary section
+    const generateSummarySection = (label: string) => {
+      if (summary) {
+        return `## ${label}\n\n${summary}\n\n`;
       }
-      markdown += '\n';
-    }
+      return '';
+    };
 
-    // Skills section
-    if (skills.length > 0) {
-      markdown += `## Skills\n\n`;
+    // Helper function to generate experience section
+    const generateExperienceSection = (label: string) => {
+      if (groupedByRole.size === 0) return '';
+
+      let sectionMarkdown = `## ${label}\n\n`;
+      for (const [key, roleMatches] of groupedByRole) {
+        const [company, title] = key.split('|');
+        const firstMatch = roleMatches[0];
+
+        sectionMarkdown += `**${company}**${firstMatch.location ? ` | ${firstMatch.location}` : ''}\n`;
+        sectionMarkdown += `${title}${firstMatch.startDate ? `, ${firstMatch.startDate} - ${firstMatch.endDate || 'Present'}` : ''}\n\n`;
+
+        for (const match of roleMatches) {
+          sectionMarkdown += `- ${match.achievementText}\n`;
+        }
+        sectionMarkdown += '\n';
+      }
+      return sectionMarkdown;
+    };
+
+    // Helper function to generate skills section
+    const generateSkillsSection = (label: string) => {
+      if (skills.length === 0) return '';
+
+      let sectionMarkdown = `## ${label}\n\n`;
 
       // Group skills by category
       const skillsByCategory = new Map<string, string[]>();
@@ -147,16 +173,19 @@ export const generateResume = tool({
       }
 
       for (const [category, skillNames] of skillsByCategory) {
-        markdown += `**${category}:** ${skillNames.join(', ')}\n\n`;
+        sectionMarkdown += `**${category}:** ${skillNames.join(', ')}\n\n`;
       }
-    }
+      return sectionMarkdown;
+    };
 
-    // Education section
-    if (education.length > 0) {
-      markdown += `## Education\n\n`;
+    // Helper function to generate education section
+    const generateEducationSection = (label: string) => {
+      if (education.length === 0) return '';
+
+      let sectionMarkdown = `## ${label}\n\n`;
 
       for (const edu of education) {
-        markdown += `**${edu.institution}**${edu.location ? ` | ${edu.location}` : ''}\n`;
+        sectionMarkdown += `**${edu.institution}**${edu.location ? ` | ${edu.location}` : ''}\n`;
 
         let degreeLine = edu.degree;
         if (edu.field) degreeLine += ` in ${edu.field}`;
@@ -166,7 +195,27 @@ export const generateResume = tool({
         }
         if (edu.gpa) degreeLine += ` | GPA: ${edu.gpa}`;
         if (edu.honors) degreeLine += ` | ${edu.honors}`;
-        markdown += `${degreeLine}\n\n`;
+        sectionMarkdown += `${degreeLine}\n\n`;
+      }
+      return sectionMarkdown;
+    };
+
+    // Generate sections based on structure preference (or default order)
+    for (const section of sections) {
+      switch (section.type) {
+        case 'summary':
+          markdown += generateSummarySection(section.label);
+          break;
+        case 'experience':
+          markdown += generateExperienceSection(section.label);
+          break;
+        case 'skill':
+          markdown += generateSkillsSection(section.label);
+          break;
+        case 'education':
+          markdown += generateEducationSection(section.label);
+          break;
+        // Custom section types can be added here in the future
       }
     }
 
