@@ -154,6 +154,9 @@ export const rankedMatchSchema = z.object({
   title: z.string(),
   score: z.number(),
   matchedRequirements: z.array(z.string()),
+  // Optional fields for library items (projects, certifications, etc.)
+  isLibraryItem: z.boolean().optional(),
+  itemType: z.string().optional(), // "project", "certification", "award", etc.
 });
 
 export type RankedMatch = z.infer<typeof rankedMatchSchema>;
