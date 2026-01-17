@@ -22,7 +22,8 @@ model User {
   preferences    Preference?
   conversations  Conversation[]
   resumes        GeneratedResume[]
-  contactDetails ContactDetails?
+  contactDetails  ContactDetails?
+  resumeStructure ResumeStructure?
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -184,4 +185,16 @@ model ContactDetails {
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model ResumeStructure {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  contactFields String[]  // ["name", "email", "phone", "linkedin"]
+  sections      Json      // [{ type: "experience", label: "Professional Experience" }, ...]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
