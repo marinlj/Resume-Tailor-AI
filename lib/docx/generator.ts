@@ -358,6 +358,56 @@ export function generateDocx(data: ResumeData): Document {
     );
   }
 
+  // Education
+  if (data.education && data.education.length > 0) {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: 'EDUCATION',
+            bold: true,
+            size: 22,
+            font: 'Cambria',
+          }),
+        ],
+        spacing: { before: 200, after: 100 },
+      })
+    );
+
+    for (const edu of data.education) {
+      // School name
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: edu.school,
+              bold: true,
+              size: 20,
+              font: 'Cambria',
+            }),
+          ],
+          spacing: { before: 100 },
+        })
+      );
+
+      // Degree and year
+      const degreeText = edu.year ? `${edu.degree}, ${edu.year}` : edu.degree;
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: degreeText,
+              italics: true,
+              size: 20,
+              font: 'Cambria',
+            }),
+          ],
+          spacing: { after: 50 },
+        })
+      );
+    }
+  }
+
   return new Document({
     sections: [
       {
