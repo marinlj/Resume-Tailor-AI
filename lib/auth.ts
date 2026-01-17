@@ -8,4 +8,7 @@ import { authConfig } from './auth.config';
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma as any),
+  // Use JWT sessions for Edge runtime compatibility
+  session: { strategy: 'jwt' },
+  debug: process.env.AUTH_DEBUG === 'true',
 });

@@ -12,8 +12,12 @@ import {
   deleteAchievement,
   getSkills,
   addSkills,
+  updateSkill,
+  deleteSkill,
   getEducation,
   addEducation,
+  updateEducation,
+  deleteEducation,
   parseResumeIntoLibrary,
   getContactDetails,
   updateContactDetails,
@@ -55,10 +59,14 @@ export const resumeAgent = new ToolLoopAgent({
     // Library management - Skills
     getSkills,
     addSkills,
+    updateSkill,
+    deleteSkill,
 
     // Library management - Education
     getEducation,
     addEducation,
+    updateEducation,
+    deleteEducation,
 
     // Library management - Contact Details
     getContactDetails,

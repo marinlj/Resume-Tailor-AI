@@ -271,13 +271,14 @@ export type ParsedRequirement = z.infer<typeof parsedRequirementSchema>;
 
 export const contactDetailsInputSchema = z.object({
   fullName: z.string().describe('Full name as it should appear on resume'),
-  email: z.string().email().describe('Professional email address'),
-  phone: z.string().optional().describe('Phone number'),
-  location: z.string().optional().describe('Location (City, State/Country)'),
+  // Accept any string for email - validation is lenient to handle LLM extraction quirks
+  email: z.string().describe('Professional email address'),
+  phone: z.string().optional().transform(v => v === '' ? undefined : v).describe('Phone number'),
+  location: z.string().optional().transform(v => v === '' ? undefined : v).describe('Location (City, State/Country)'),
   linkedinUrl: z.string().optional().transform(v => v === '' ? undefined : v).describe('LinkedIn profile URL'),
   portfolioUrl: z.string().optional().transform(v => v === '' ? undefined : v).describe('Portfolio or personal website URL'),
   githubUrl: z.string().optional().transform(v => v === '' ? undefined : v).describe('GitHub profile URL'),
-  headline: z.string().optional().describe('Professional headline (e.g., "Senior Software Engineer")'),
+  headline: z.string().optional().transform(v => v === '' ? undefined : v).describe('Professional headline (e.g., "Senior Software Engineer")'),
 });
 
 export type ContactDetailsInput = z.infer<typeof contactDetailsInputSchema>;

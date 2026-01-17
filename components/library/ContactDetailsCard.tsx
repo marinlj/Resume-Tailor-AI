@@ -1,5 +1,14 @@
-import { Card, CardContent } from '@/components/ui/card';
+'use client';
+
 import { Mail, Phone, MapPin, Linkedin, Globe, Github } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+function normalizeUrl(url: string): string {
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  return `https://${url}`;
+}
 
 interface ContactDetails {
   id: string;
@@ -20,96 +29,99 @@ interface ContactDetailsCardProps {
 export function ContactDetailsCard({ contactDetails }: ContactDetailsCardProps) {
   if (!contactDetails) {
     return (
-      <Card className="bg-muted/50">
-        <CardContent className="py-6 text-center">
-          <p className="text-muted-foreground">
-            No contact details yet. Upload a resume or ask the agent to add them.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="relative py-16 px-8 text-center border-b border-editorial-line">
+        <div className="absolute inset-0 bg-gradient-to-b from-editorial-accent-muted/30 to-transparent opacity-50" />
+        <p className="relative text-muted-foreground font-serif italic">
+          No contact details yet. Upload a resume or ask the agent to add them.
+        </p>
+      </div>
     );
   }
 
+  const socialLinks = [
+    { url: contactDetails.linkedinUrl, icon: Linkedin, label: 'LinkedIn' },
+    { url: contactDetails.portfolioUrl, icon: Globe, label: 'Portfolio' },
+    { url: contactDetails.githubUrl, icon: Github, label: 'GitHub' },
+  ].filter((link) => link.url);
+
   return (
-    <Card>
-      <CardContent className="py-6">
-        <div className="space-y-2">
-          {/* Name and headline */}
-          <div>
-            <h2 className="text-2xl font-bold">{contactDetails.fullName}</h2>
-            {contactDetails.headline && (
-              <p className="text-muted-foreground">{contactDetails.headline}</p>
-            )}
-          </div>
+    <header className="relative pb-12 mb-4">
+      {/* Subtle gradient background */}
+      <div className="absolute inset-0 -mx-6 bg-gradient-to-b from-editorial-accent-muted/20 via-transparent to-transparent" />
 
-          {/* Contact info row */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-            <span className="flex items-center gap-1">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <a href={`mailto:${contactDetails.email}`} className="hover:underline">
-                {contactDetails.email}
-              </a>
+      <div className="relative">
+        {/* Name - large editorial serif */}
+        <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight mb-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          {contactDetails.fullName}
+        </h1>
+
+        {/* Headline - elegant subtext */}
+        {contactDetails.headline && (
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl leading-relaxed animate-in fade-in slide-in-from-bottom-2 duration-500 delay-100">
+            {contactDetails.headline}
+          </p>
+        )}
+
+        {/* Decorative line */}
+        <div className="mt-8 mb-6 flex items-center gap-4 animate-in fade-in duration-700 delay-200">
+          <div className="h-px flex-1 max-w-24 bg-gradient-to-r from-editorial-accent to-transparent" />
+          <div className="h-1.5 w-1.5 rounded-full bg-editorial-accent" />
+        </div>
+
+        {/* Contact info - refined layout */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm animate-in fade-in slide-in-from-bottom-1 duration-500 delay-300">
+          <a
+            href={`mailto:${contactDetails.email}`}
+            className="group flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Mail className="h-4 w-4 text-editorial-accent group-hover:scale-110 transition-transform" />
+            <span className="border-b border-transparent group-hover:border-current transition-colors">
+              {contactDetails.email}
             </span>
+          </a>
 
-            {contactDetails.phone && (
-              <span className="flex items-center gap-1">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <a href={`tel:${contactDetails.phone}`} className="hover:underline">
-                  {contactDetails.phone}
-                </a>
+          {contactDetails.phone && (
+            <a
+              href={`tel:${contactDetails.phone}`}
+              className="group flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Phone className="h-4 w-4 text-editorial-accent group-hover:scale-110 transition-transform" />
+              <span className="border-b border-transparent group-hover:border-current transition-colors">
+                {contactDetails.phone}
               </span>
-            )}
+            </a>
+          )}
 
-            {contactDetails.location && (
-              <span className="flex items-center gap-1">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                {contactDetails.location}
-              </span>
-            )}
-          </div>
-
-          {/* Links row */}
-          {(contactDetails.linkedinUrl || contactDetails.portfolioUrl || contactDetails.githubUrl) && (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              {contactDetails.linkedinUrl && (
-                <a
-                  href={contactDetails.linkedinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-blue-600 hover:underline"
-                >
-                  <Linkedin className="h-4 w-4" />
-                  LinkedIn
-                </a>
-              )}
-
-              {contactDetails.portfolioUrl && (
-                <a
-                  href={contactDetails.portfolioUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-blue-600 hover:underline"
-                >
-                  <Globe className="h-4 w-4" />
-                  Portfolio
-                </a>
-              )}
-
-              {contactDetails.githubUrl && (
-                <a
-                  href={contactDetails.githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-blue-600 hover:underline"
-                >
-                  <Github className="h-4 w-4" />
-                  GitHub
-                </a>
-              )}
-            </div>
+          {contactDetails.location && (
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <MapPin className="h-4 w-4 text-editorial-accent" />
+              {contactDetails.location}
+            </span>
           )}
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Social links - elegant pills */}
+        {socialLinks.length > 0 && (
+          <div className="mt-6 flex flex-wrap gap-3 animate-in fade-in slide-in-from-bottom-1 duration-500 delay-400">
+            {socialLinks.map(({ url, icon: Icon, label }) => (
+              <a
+                key={label}
+                href={normalizeUrl(url!)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "group inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm",
+                  "bg-secondary/50 hover:bg-editorial-accent-muted border border-transparent hover:border-editorial-accent/20",
+                  "text-muted-foreground hover:text-foreground transition-all duration-200"
+                )}
+              >
+                <Icon className="h-4 w-4 group-hover:text-editorial-accent transition-colors" />
+                {label}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+    </header>
   );
 }

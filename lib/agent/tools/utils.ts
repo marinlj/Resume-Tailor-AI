@@ -1,5 +1,6 @@
 // lib/agent/tools/utils.ts
 import { z } from 'zod';
+import { AsyncLocalStorage } from 'async_hooks';
 
 /**
  * Standard result type for all tools
@@ -56,20 +57,55 @@ export function sanitizeFilename(str: string): string {
 }
 
 /**
- * User ID management for authenticated users
- * User ID is now passed via tool context from the API route
+ * User context storage using AsyncLocalStorage for proper async context propagation
+ * This ensures the userId is available throughout the entire request lifecycle,
+ * including async tool executions in streaming contexts.
  */
-let currentUserId: string | null = null;
-
-export function setCurrentUserId(userId: string) {
-  currentUserId = userId;
+interface UserContext {
+  userId: string;
 }
 
+const userContextStorage = new AsyncLocalStorage<UserContext>();
+
+/**
+ * Run a function within a user context. All async operations inside
+ * will have access to the userId via getCurrentUserId().
+ */
+export function runWithUserId<T>(userId: string, fn: () => T): T {
+  console.log('[utils] runWithUserId called with:', userId);
+  return userContextStorage.run({ userId }, fn);
+}
+
+/**
+ * Get the current user ID from async context.
+ * Falls back to module-level variable for backward compatibility.
+ */
 export function getCurrentUserId(): string {
-  if (!currentUserId) {
-    throw new Error('User ID not set. Ensure auth middleware is working.');
+  const context = userContextStorage.getStore();
+  console.log('[utils] getCurrentUserId called, context:', context?.userId ?? 'none');
+
+  if (context?.userId) {
+    return context.userId;
   }
-  return currentUserId;
+
+  // Fallback to module-level variable (for backward compatibility during transition)
+  if (currentUserId) {
+    console.log('[utils] Falling back to module-level userId:', currentUserId);
+    return currentUserId;
+  }
+
+  throw new Error('User ID not set. Ensure auth middleware is working and using runWithUserId.');
+}
+
+// Legacy module-level variable (fallback only)
+let currentUserId: string | null = null;
+
+/**
+ * @deprecated Use runWithUserId() instead. This is kept for backward compatibility.
+ */
+export function setCurrentUserId(userId: string) {
+  console.log('[utils] setCurrentUserId called with:', userId);
+  currentUserId = userId;
 }
 
 /**

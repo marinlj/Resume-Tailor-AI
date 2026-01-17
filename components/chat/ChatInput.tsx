@@ -5,9 +5,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { SendHorizontal, Paperclip, X } from 'lucide-react';
 
-const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-const ACCEPTED_FILE_TYPES = '.txt,.md';
+const ACCEPTED_FILE_TYPES = '.pdf,.docx,.txt,.md';
 
 interface ChatInputProps {
   input: string;

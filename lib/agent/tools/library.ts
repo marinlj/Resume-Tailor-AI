@@ -123,15 +123,27 @@ export const addMultipleAchievements = tool({
     achievements: z.array(achievementInputSchema).describe('Array of achievements to add'),
   }),
   execute: async ({ achievements }) => {
-    const userId = getTempUserId();
+    console.log('[addMultipleAchievements] Starting with', achievements.length, 'achievements');
+    let userId: string;
+    try {
+      userId = getTempUserId();
+      console.log('[addMultipleAchievements] userId:', userId);
+    } catch (error) {
+      console.error('[addMultipleAchievements] Failed to get userId:', error);
+      return { success: false, error: `Failed to get user context: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+
     try {
       // Ensure user exists
+      console.log('[addMultipleAchievements] Upserting user...');
       await prisma.user.upsert({
         where: { id: userId },
         update: {},
         create: { id: userId, email: `${userId}@temp.local` },
       });
+      console.log('[addMultipleAchievements] User upserted successfully');
 
+      console.log('[addMultipleAchievements] Creating achievements...');
       const created = await prisma.achievement.createMany({
         data: achievements.map((a) => ({
           userId,
@@ -144,6 +156,7 @@ export const addMultipleAchievements = tool({
           tags: a.tags,
         })),
       });
+      console.log('[addMultipleAchievements] Successfully created', created.count, 'achievements');
 
       return {
         success: true,
@@ -151,7 +164,9 @@ export const addMultipleAchievements = tool({
         message: `Successfully added ${created.count} achievements to your library.`,
       };
     } catch (error) {
-      return { success: false, error: 'Failed to add achievements' };
+      console.error('[addMultipleAchievements] Error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: `Failed to add achievements: ${errorMessage}` };
     }
   },
 });
@@ -306,6 +321,56 @@ export const addSkills = tool({
   },
 });
 
+export const updateSkill = tool({
+  description: 'Update an existing skill in the library',
+  inputSchema: z.object({
+    id: z.string().describe('Skill ID to update'),
+    updates: skillInputSchema.partial().describe('Fields to update'),
+  }),
+  execute: async ({ id, updates }) => {
+    const userId = getTempUserId();
+    try {
+      const skill = await prisma.skill.update({
+        where: { id, userId },
+        data: {
+          ...(updates.name && { name: updates.name }),
+          ...(updates.category !== undefined && { category: updates.category }),
+          ...(updates.level !== undefined && { level: updates.level }),
+        },
+      });
+
+      return {
+        success: true,
+        id: skill.id,
+        name: skill.name,
+        category: skill.category,
+        level: skill.level,
+      };
+    } catch (error) {
+      return { success: false, error: 'Skill not found or update failed' };
+    }
+  },
+});
+
+export const deleteSkill = tool({
+  description: 'Delete a skill from the library',
+  inputSchema: z.object({
+    id: z.string().describe('Skill ID to delete'),
+  }),
+  execute: async ({ id }) => {
+    const userId = getTempUserId();
+    try {
+      await prisma.skill.delete({
+        where: { id, userId },
+      });
+
+      return { success: true, deleted: true, id };
+    } catch (error) {
+      return { success: false, error: 'Skill not found or already deleted' };
+    }
+  },
+});
+
 // ============================================================================
 // Education Tools
 // ============================================================================
@@ -389,6 +454,70 @@ export const addEducation = tool({
   },
 });
 
+export const updateEducation = tool({
+  description: 'Update an existing education entry in the library',
+  inputSchema: z.object({
+    id: z.string().describe('Education ID to update'),
+    updates: educationInputSchema.partial().describe('Fields to update'),
+  }),
+  execute: async ({ id, updates }) => {
+    const userId = getTempUserId();
+    try {
+      const education = await prisma.education.update({
+        where: { id, userId },
+        data: {
+          ...(updates.institution && { institution: updates.institution }),
+          ...(updates.degree && { degree: updates.degree }),
+          ...(updates.field !== undefined && { field: updates.field }),
+          ...(updates.location !== undefined && { location: updates.location }),
+          ...(updates.startDate && { startDate: new Date(updates.startDate) }),
+          ...(updates.endDate && {
+            endDate: updates.endDate === 'present' ? null : new Date(updates.endDate)
+          }),
+          ...(updates.gpa !== undefined && { gpa: updates.gpa }),
+          ...(updates.honors !== undefined && { honors: updates.honors }),
+          ...(updates.activities && { activities: updates.activities }),
+        },
+      });
+
+      return {
+        success: true,
+        id: education.id,
+        institution: education.institution,
+        degree: education.degree,
+        field: education.field,
+        location: education.location,
+        startDate: education.startDate?.toISOString().slice(0, 7) ?? null,
+        endDate: education.endDate?.toISOString().slice(0, 7) ?? null,
+        gpa: education.gpa,
+        honors: education.honors,
+        activities: education.activities,
+      };
+    } catch (error) {
+      return { success: false, error: 'Education entry not found or update failed' };
+    }
+  },
+});
+
+export const deleteEducation = tool({
+  description: 'Delete an education entry from the library',
+  inputSchema: z.object({
+    id: z.string().describe('Education ID to delete'),
+  }),
+  execute: async ({ id }) => {
+    const userId = getTempUserId();
+    try {
+      await prisma.education.delete({
+        where: { id, userId },
+      });
+
+      return { success: true, deleted: true, id };
+    } catch (error) {
+      return { success: false, error: 'Education entry not found or already deleted' };
+    }
+  },
+});
+
 // ============================================================================
 // Contact Details Tools
 // ============================================================================
@@ -435,15 +564,27 @@ export const updateContactDetails = tool({
   description: 'Create or update the user\'s contact details in the library',
   inputSchema: contactDetailsInputSchema,
   execute: async (input) => {
-    const userId = getTempUserId();
+    console.log('[updateContactDetails] Input received:', JSON.stringify(input, null, 2));
+    let userId: string;
+    try {
+      userId = getTempUserId();
+      console.log('[updateContactDetails] userId:', userId);
+    } catch (error) {
+      console.error('[updateContactDetails] Failed to get userId:', error);
+      return { success: false, error: `Failed to get user context: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+
     try {
       // Ensure user exists
+      console.log('[updateContactDetails] Upserting user...');
       await prisma.user.upsert({
         where: { id: userId },
         update: {},
         create: { id: userId, email: `${userId}@temp.local` },
       });
+      console.log('[updateContactDetails] User upserted successfully');
 
+      console.log('[updateContactDetails] Upserting contact details...');
       const contactDetails = await prisma.contactDetails.upsert({
         where: { userId },
         update: {
@@ -468,6 +609,7 @@ export const updateContactDetails = tool({
           headline: input.headline ?? null,
         },
       });
+      console.log('[updateContactDetails] Successfully saved contact details with id:', contactDetails.id);
 
       return {
         success: true,
@@ -485,6 +627,7 @@ export const updateContactDetails = tool({
         message: 'Contact details saved to library.',
       };
     } catch (error) {
+      console.error('[updateContactDetails] Error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, error: `Failed to save contact details: ${errorMessage}` };
     }

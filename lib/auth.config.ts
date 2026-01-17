@@ -37,9 +37,17 @@ export const authConfig: NextAuthConfig = {
       // Require authentication for all other paths
       return isLoggedIn;
     },
-    session({ session, user }) {
-      if (session.user && user) {
-        session.user.id = user.id;
+    // Store user ID in JWT token
+    jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    // Pass user ID from JWT token to session
+    session({ session, token }) {
+      if (session.user && token.id) {
+        session.user.id = token.id as string;
       }
       return session;
     },
