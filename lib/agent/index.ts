@@ -45,6 +45,12 @@ import {
   updatePreferences,
 } from './tools/preferences';
 
+// Resume Structure tools
+import {
+  getResumeStructure,
+  saveResumeStructure,
+} from './tools/structure';
+
 export const resumeAgent = new ToolLoopAgent({
   model: anthropic('claude-opus-4-5-20251101'),
   instructions: RESUME_AGENT_INSTRUCTIONS,
@@ -95,6 +101,10 @@ export const resumeAgent = new ToolLoopAgent({
     // Preferences
     getPreferences,
     updatePreferences,
+
+    // Resume Structure
+    getResumeStructure,
+    saveResumeStructure,
   },
   stopWhen: stepCountIs(15),
 });
