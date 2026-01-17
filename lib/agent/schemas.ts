@@ -296,3 +296,29 @@ export const contactDetailsOutputSchema = z.object({
 });
 
 export type ContactDetailsOutput = z.infer<typeof contactDetailsOutputSchema>;
+
+// ============================================================================
+// Resume Structure
+// ============================================================================
+
+export const resumeSectionSchema = z.object({
+  type: z.string().describe('Section type: "summary", "experience", "skill", "education", or custom type'),
+  label: z.string().describe('Display label for this section'),
+});
+
+export type ResumeSection = z.infer<typeof resumeSectionSchema>;
+
+export const resumeStructureInputSchema = z.object({
+  contactFields: z.array(z.string()).describe('Contact fields to include: "name", "email", "phone", "location", "linkedin", "portfolio", "github"'),
+  sections: z.array(resumeSectionSchema).describe('Ordered list of sections to include'),
+});
+
+export type ResumeStructureInput = z.infer<typeof resumeStructureInputSchema>;
+
+export const resumeStructureOutputSchema = z.object({
+  id: z.string(),
+  contactFields: z.array(z.string()),
+  sections: z.array(resumeSectionSchema),
+});
+
+export type ResumeStructureOutput = z.infer<typeof resumeStructureOutputSchema>;
