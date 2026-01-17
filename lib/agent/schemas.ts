@@ -322,3 +322,34 @@ export const resumeStructureOutputSchema = z.object({
 });
 
 export type ResumeStructureOutput = z.infer<typeof resumeStructureOutputSchema>;
+
+// ============================================================================
+// Library Items (Projects, Certifications, Awards, Publications, etc.)
+// ============================================================================
+
+export const libraryItemInputSchema = z.object({
+  type: z.string().describe('Section type: "project", "certification", "award", "publication", "volunteer", etc.'),
+  title: z.string().describe('Item title'),
+  subtitle: z.string().optional().describe('Organization, issuer, etc.'),
+  date: z.string().optional().describe('Date or date range'),
+  location: z.string().optional(),
+  bullets: z.array(z.string()).optional().describe('Description bullet points'),
+  tags: z.array(z.string()).optional().describe('Tags for matching'),
+  url: z.string().optional().describe('Link if applicable'),
+});
+
+export type LibraryItemInput = z.infer<typeof libraryItemInputSchema>;
+
+export const libraryItemOutputSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  title: z.string(),
+  subtitle: z.string().nullable(),
+  date: z.string().nullable(),
+  location: z.string().nullable(),
+  bullets: z.array(z.string()),
+  tags: z.array(z.string()),
+  url: z.string().nullable(),
+});
+
+export type LibraryItemOutput = z.infer<typeof libraryItemOutputSchema>;

@@ -21,6 +21,10 @@ import {
   parseResumeIntoLibrary,
   getContactDetails,
   updateContactDetails,
+  getLibraryItems,
+  addLibraryItems,
+  updateLibraryItem,
+  deleteLibraryItem,
 } from './tools/library';
 
 // Research tools
@@ -82,6 +86,12 @@ export const resumeAgent = new ToolLoopAgent({
     // Library management - Contact Details
     getContactDetails,
     updateContactDetails,
+
+    // Library management - Library Items (Projects, Certifications, Awards, etc.)
+    getLibraryItems,
+    addLibraryItems,
+    updateLibraryItem,
+    deleteLibraryItem,
 
     // Library management - Parsing
     parseResumeIntoLibrary,

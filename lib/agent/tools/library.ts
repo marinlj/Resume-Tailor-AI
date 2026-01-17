@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { prisma } from '@/lib/prisma';
-import { achievementInputSchema, skillInputSchema, educationInputSchema, contactDetailsInputSchema } from '../schemas';
+import { achievementInputSchema, skillInputSchema, educationInputSchema, contactDetailsInputSchema, libraryItemInputSchema } from '../schemas';
 import { z } from 'zod';
 import { getTempUserId } from './utils';
 
@@ -719,5 +719,162 @@ ${resumeText}
         education: 'array of { institution, degree, field?, location?, startDate?, endDate?, gpa?, honors?, activities[]? }',
       },
     };
+  },
+});
+
+// ============================================================================
+// Library Items Tools (Projects, Certifications, Awards, Publications, etc.)
+// ============================================================================
+
+export const getLibraryItems = tool({
+  description: 'Get library items, optionally filtered by type',
+  inputSchema: z.object({
+    type: z.string().optional().describe('Filter by type (project, certification, award, publication, volunteer, etc.)'),
+  }),
+  execute: async ({ type }) => {
+    const userId = getTempUserId();
+    try {
+      const where: Record<string, unknown> = { userId };
+      if (type) {
+        where.type = type;
+      }
+
+      const items = await prisma.libraryItem.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return {
+        success: true,
+        items: items.map((item) => ({
+          id: item.id,
+          type: item.type,
+          title: item.title,
+          subtitle: item.subtitle,
+          date: item.date,
+          location: item.location,
+          bullets: item.bullets,
+          tags: item.tags,
+          url: item.url,
+        })),
+      };
+    } catch (error) {
+      return { success: false, error: 'Failed to fetch library items' };
+    }
+  },
+});
+
+export const addLibraryItems = tool({
+  description: 'Add multiple library items at once (projects, certifications, awards, publications, volunteer work, etc.)',
+  inputSchema: z.object({
+    items: z.array(libraryItemInputSchema).describe('Array of items to add'),
+  }),
+  execute: async ({ items }) => {
+    console.log('[addLibraryItems] Starting with', items.length, 'items');
+    let userId: string;
+    try {
+      userId = getTempUserId();
+      console.log('[addLibraryItems] userId:', userId);
+    } catch (error) {
+      console.error('[addLibraryItems] Failed to get userId:', error);
+      return { success: false, error: `Failed to get user context: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+
+    try {
+      // Ensure user exists
+      console.log('[addLibraryItems] Upserting user...');
+      await prisma.user.upsert({
+        where: { id: userId },
+        update: {},
+        create: { id: userId, email: `${userId}@temp.local` },
+      });
+      console.log('[addLibraryItems] User upserted successfully');
+
+      console.log('[addLibraryItems] Creating library items...');
+      const created = await prisma.libraryItem.createMany({
+        data: items.map((item) => ({
+          userId,
+          type: item.type,
+          title: item.title,
+          subtitle: item.subtitle ?? null,
+          date: item.date ?? null,
+          location: item.location ?? null,
+          bullets: item.bullets ?? [],
+          tags: item.tags ?? [],
+          url: item.url ?? null,
+        })),
+      });
+      console.log('[addLibraryItems] Successfully created', created.count, 'items');
+
+      return {
+        success: true,
+        added: created.count,
+        message: `Successfully added ${created.count} items to your library.`,
+      };
+    } catch (error) {
+      console.error('[addLibraryItems] Error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: `Failed to add library items: ${errorMessage}` };
+    }
+  },
+});
+
+export const updateLibraryItem = tool({
+  description: 'Update an existing library item',
+  inputSchema: z.object({
+    id: z.string().describe('Library item ID to update'),
+    updates: libraryItemInputSchema.partial().describe('Fields to update'),
+  }),
+  execute: async ({ id, updates }) => {
+    const userId = getTempUserId();
+    try {
+      const item = await prisma.libraryItem.update({
+        where: { id, userId },
+        data: {
+          ...(updates.type && { type: updates.type }),
+          ...(updates.title && { title: updates.title }),
+          ...(updates.subtitle !== undefined && { subtitle: updates.subtitle }),
+          ...(updates.date !== undefined && { date: updates.date }),
+          ...(updates.location !== undefined && { location: updates.location }),
+          ...(updates.bullets && { bullets: updates.bullets }),
+          ...(updates.tags && { tags: updates.tags }),
+          ...(updates.url !== undefined && { url: updates.url }),
+        },
+      });
+
+      return {
+        success: true,
+        id: item.id,
+        type: item.type,
+        title: item.title,
+        subtitle: item.subtitle,
+        date: item.date,
+        location: item.location,
+        bullets: item.bullets,
+        tags: item.tags,
+        url: item.url,
+      };
+    } catch (error) {
+      return { success: false, error: 'Library item not found or update failed' };
+    }
+  },
+});
+
+export const deleteLibraryItem = tool({
+  description: 'Delete a library item',
+  inputSchema: z.object({
+    id: z.string().describe('Library item ID to delete'),
+  }),
+  execute: async ({ id }) => {
+    const userId = getTempUserId();
+    try {
+      await prisma.libraryItem.delete({
+        where: { id, userId },
+      });
+
+      return { success: true, deleted: true, id };
+    } catch (error) {
+      return { success: false, error: 'Library item not found or already deleted' };
+    }
   },
 });
