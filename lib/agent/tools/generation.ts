@@ -200,6 +200,32 @@ export const generateResume = tool({
       return sectionMarkdown;
     };
 
+    // Helper function to generate generic sections from LibraryItem
+    const generateGenericSection = async (type: string, label: string): Promise<string> => {
+      const items = await prisma.libraryItem.findMany({
+        where: { userId, type },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (items.length === 0) return '';
+
+      let sectionMarkdown = `## ${label}\n\n`;
+      for (const item of items) {
+        sectionMarkdown += `**${item.title}**`;
+        if (item.subtitle) sectionMarkdown += ` | ${item.subtitle}`;
+        if (item.date) sectionMarkdown += ` | ${item.date}`;
+        sectionMarkdown += '\n';
+
+        if (item.bullets && item.bullets.length > 0) {
+          for (const bullet of item.bullets) {
+            sectionMarkdown += `- ${bullet}\n`;
+          }
+        }
+        sectionMarkdown += '\n';
+      }
+      return sectionMarkdown;
+    };
+
     // Generate sections based on structure preference (or default order)
     for (const section of sections) {
       switch (section.type) {
@@ -215,7 +241,10 @@ export const generateResume = tool({
         case 'education':
           markdown += generateEducationSection(section.label);
           break;
-        // Custom section types can be added here in the future
+        default:
+          // Handle dynamic section types from LibraryItem
+          markdown += await generateGenericSection(section.type, section.label);
+          break;
       }
     }
 
