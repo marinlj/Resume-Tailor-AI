@@ -24,6 +24,7 @@ model User {
   resumes        GeneratedResume[]
   contactDetails  ContactDetails?
   resumeStructure ResumeStructure?
+  libraryItems    LibraryItem[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -197,4 +198,24 @@ model ResumeStructure {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model LibraryItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      String   // "project", "certification", "award", "publication", etc.
+  title     String
+  subtitle  String?  // Organization, issuer, etc.
+  date      String?  // Date or date range
+  location  String?
+  bullets   String[]
+  tags      String[]
+  url       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, type])
 }
