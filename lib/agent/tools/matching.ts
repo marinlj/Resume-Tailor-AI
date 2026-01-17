@@ -5,7 +5,6 @@ import {
   RankedMatch,
   Gap,
   successProfileInputSchema,
-  KeyTheme,
 } from '../schemas';
 import { getTempUserId, safeJsonParse } from './utils';
 
@@ -69,42 +68,46 @@ export const matchAchievements = tool({
       };
     }
 
-    // Extract all requirement tags from profile
-    const allRequiredTags = profile.keyThemes?.flatMap((t: KeyTheme) => t.tags) || [];
-
-    // Score each achievement
+    // Score each achievement against each theme, take best match
     const scoredAchievements = achievements.map((achievement) => {
-      const tagOverlap = achievement.tags.filter((tag) =>
-        allRequiredTags.some((reqTag: string) =>
-          tag.toLowerCase().includes(reqTag.toLowerCase()) ||
-          reqTag.toLowerCase().includes(tag.toLowerCase())
-        )
-      );
-
-      // Simple scoring: percentage of required tags matched
-      const score = allRequiredTags.length > 0
-        ? (tagOverlap.length / allRequiredTags.length) * 100
-        : MATCH_THRESHOLDS.DEFAULT_SCORE; // Default score if no tags specified
-
-      // Find which requirements this achievement addresses
+      let bestThemeScore = 0;
       const matchedRequirements: string[] = [];
+
       for (const theme of profile.keyThemes || []) {
-        const themeMatched = theme.tags.some((themeTag: string) =>
-          achievement.tags.some((achTag) =>
-            achTag.toLowerCase().includes(themeTag.toLowerCase()) ||
-            themeTag.toLowerCase().includes(achTag.toLowerCase())
+        const tagOverlap = achievement.tags.filter((tag) =>
+          theme.tags.some((themeTag: string) =>
+            tag.toLowerCase().includes(themeTag.toLowerCase()) ||
+            themeTag.toLowerCase().includes(tag.toLowerCase())
           )
         );
-        if (themeMatched) {
+
+        // Score for this theme: percentage of theme's tags matched
+        const themeScore = theme.tags.length > 0
+          ? (tagOverlap.length / theme.tags.length) * 100
+          : 0;
+
+        if (themeScore > 0) {
           matchedRequirements.push(theme.theme);
         }
+
+        if (themeScore > bestThemeScore) {
+          bestThemeScore = themeScore;
+        }
       }
+
+      // Use best theme score (not average of all themes)
+      const score = (profile.keyThemes?.length ?? 0) > 0
+        ? bestThemeScore
+        : MATCH_THRESHOLDS.DEFAULT_SCORE;
 
       return {
         achievementId: achievement.id,
         achievementText: achievement.text,
         company: achievement.company,
         title: achievement.title,
+        location: achievement.location,
+        startDate: achievement.startDate?.toISOString().slice(0, 7) ?? null,
+        endDate: achievement.endDate?.toISOString().slice(0, 7) ?? null,
         score: Math.round(score),
         matchedRequirements,
         tags: achievement.tags,
