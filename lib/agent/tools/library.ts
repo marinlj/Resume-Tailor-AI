@@ -702,6 +702,22 @@ Extract ALL education entries:
 
 Call \`addEducation\` with the extracted education data.
 
+## 4. OTHER SECTIONS (Projects, Certifications, Awards, Publications, Volunteer)
+
+For any additional sections in the resume (Projects, Certifications, Awards, Publications, Volunteer Work, etc.):
+- Identify the section type from the header (e.g., "Projects" → type: "project", "Certifications" → type: "certification", "Awards" → type: "award", "Publications" → type: "publication", "Volunteer" → type: "volunteer")
+- Extract each item with:
+  - type: The section type (project, certification, award, publication, volunteer, or other descriptive type)
+  - title: The project/award/certification name
+  - subtitle: Organization, issuer, or context (optional)
+  - date: When it occurred or was earned (optional)
+  - location: Where it happened (optional)
+  - bullets: Description or details as bullet points
+  - tags: Relevant tags for matching (similar to achievements)
+  - url: Link if applicable
+
+Call \`addLibraryItems\` with the extracted items.
+
 ## IMPORTANT
 - Extract EVERYTHING from the resume - don't skip any sections
 - Contact details are typically at the very top of the resume
@@ -717,6 +733,7 @@ ${resumeText}
         achievements: 'array of { company, title, location?, startDate (YYYY-MM), endDate (YYYY-MM or "present"), text, tags[] }',
         skills: 'array of { name, category?, level? }',
         education: 'array of { institution, degree, field?, location?, startDate?, endDate?, gpa?, honors?, activities[]? }',
+        libraryItems: 'array of { type, title, subtitle?, date?, location?, bullets[]?, tags[]?, url? }',
       },
     };
   },
