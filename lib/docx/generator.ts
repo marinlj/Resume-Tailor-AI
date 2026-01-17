@@ -128,6 +128,46 @@ export function parseMarkdownToResumeData(markdown: string): ResumeData {
       continue;
     }
 
+    // Education section
+    if (currentSection.includes('education') && trimmed && !trimmed.startsWith('#')) {
+      // Institution line: **Institution Name** | Location
+      if (trimmed.startsWith('**')) {
+        const institutionMatch = trimmed.match(/\*\*(.+?)\*\*/);
+        const school = institutionMatch?.[1] || '';
+
+        // Create education entry - degree will be parsed on next line
+        data.education?.push({
+          school,
+          degree: '',
+        });
+        continue;
+      }
+
+      // Degree line: Degree in Field, Year | GPA: X.XX | Honors
+      // This line follows the institution line
+      if (data.education && data.education.length > 0) {
+        const lastEducation = data.education[data.education.length - 1];
+        if (lastEducation && !lastEducation.degree) {
+          // Extract year from format like "2020" or ", 2020"
+          const yearMatch = trimmed.match(/,?\s*(\d{4})/);
+          const year = yearMatch?.[1];
+
+          // The degree is everything before the year (or before GPA/Honors indicators)
+          let degree = trimmed;
+          if (yearMatch) {
+            degree = trimmed.slice(0, yearMatch.index).trim();
+          } else {
+            // If no year, strip GPA and honors
+            degree = trimmed.split('|')[0].trim();
+          }
+
+          lastEducation.degree = degree;
+          lastEducation.year = year;
+          continue;
+        }
+      }
+    }
+
     // Summary
     if (currentSection.includes('summary') && trimmed && !trimmed.startsWith('#')) {
       data.summary = (data.summary || '') + trimmed + ' ';
