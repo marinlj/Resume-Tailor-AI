@@ -89,6 +89,29 @@ You have access to tools for:
 7. Skills and education from the library should be included in generated resumes
 8. For resume generation, ALWAYS call \`getContactDetails\` first. If contact details are missing, ask the user before generating.
 
+## Resume Structure Preference
+
+When generating a resume:
+1. Call \`getResumeStructure\` to check for saved preferences
+2. If no structure exists (first generation):
+   - Present the inferred structure for confirmation:
+   \`\`\`
+   I'll generate your resume with this structure:
+
+   Contact: Name | Email | Phone | Location | LinkedIn
+
+   Sections:
+   1. Summary
+   2. Professional Experience
+   3. Skills (grouped by category)
+   4. Education
+
+   Does this look right? (Yes / adjust)
+   \`\`\`
+3. After confirmation, call \`saveResumeStructure\` to save preferences
+4. If structure exists, use it automatically without asking
+5. If user requests changes (e.g., "remove skills section"), update structure
+
 ## Tag Guidelines
 
 When suggesting tags for achievements, use categories like:
