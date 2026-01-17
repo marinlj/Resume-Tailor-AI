@@ -82,6 +82,18 @@ export const generateResume = tool({
     }
     const matches = parseResult.data;
 
+    // Fetch skills and education from library
+    const [skills, education] = await Promise.all([
+      prisma.skill.findMany({
+        where: { userId },
+        orderBy: { category: 'asc' },
+      }),
+      prisma.education.findMany({
+        where: { userId },
+        orderBy: { endDate: 'desc' },
+      }),
+    ]);
+
     // Group matches by company/role
     const groupedByRole = new Map<string, typeof matches>();
     for (const match of matches) {
@@ -118,6 +130,44 @@ export const generateResume = tool({
         markdown += `- ${match.achievementText}\n`;
       }
       markdown += '\n';
+    }
+
+    // Skills section
+    if (skills.length > 0) {
+      markdown += `## Skills\n\n`;
+
+      // Group skills by category
+      const skillsByCategory = new Map<string, string[]>();
+      for (const skill of skills) {
+        const category = skill.category || 'Other';
+        if (!skillsByCategory.has(category)) {
+          skillsByCategory.set(category, []);
+        }
+        skillsByCategory.get(category)!.push(skill.name);
+      }
+
+      for (const [category, skillNames] of skillsByCategory) {
+        markdown += `**${category}:** ${skillNames.join(', ')}\n\n`;
+      }
+    }
+
+    // Education section
+    if (education.length > 0) {
+      markdown += `## Education\n\n`;
+
+      for (const edu of education) {
+        markdown += `**${edu.institution}**${edu.location ? ` | ${edu.location}` : ''}\n`;
+
+        let degreeLine = edu.degree;
+        if (edu.field) degreeLine += ` in ${edu.field}`;
+        if (edu.endDate) {
+          const year = edu.endDate.getFullYear();
+          degreeLine += `, ${year}`;
+        }
+        if (edu.gpa) degreeLine += ` | GPA: ${edu.gpa}`;
+        if (edu.honors) degreeLine += ` | ${edu.honors}`;
+        markdown += `${degreeLine}\n\n`;
+      }
     }
 
     // Save to database
