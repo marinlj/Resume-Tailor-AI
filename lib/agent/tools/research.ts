@@ -1,7 +1,64 @@
 import { tool } from 'ai';
 import { z } from 'zod';
+import { tavily } from '@tavily/core';
 import { parseJDInputSchema, parsedRequirementsArraySchema } from '../schemas';
 import { safeJsonParse } from './utils';
+
+// Initialize Tavily client (uses TAVILY_API_KEY from environment)
+const getTavilyClient = () => {
+  const apiKey = process.env.TAVILY_API_KEY;
+  if (!apiKey) {
+    throw new Error('TAVILY_API_KEY environment variable is not set');
+  }
+  return tavily({ apiKey });
+};
+
+export const fetchJobFromUrl = tool({
+  description: 'Fetch and extract the job description content from a URL. Call this when the user provides a job posting URL (contains http:// or https://).',
+  inputSchema: z.object({
+    url: z.string().url().describe('The URL of the job posting to fetch'),
+  }),
+  execute: async ({ url }) => {
+    try {
+      const client = getTavilyClient();
+      const response = await client.extract([url], {
+        extractDepth: 'advanced',
+        format: 'markdown',
+      });
+
+      if (response.results.length > 0) {
+        const result = response.results[0];
+        return {
+          success: true,
+          url: result.url,
+          content: result.rawContent,
+        };
+      }
+
+      if (response.failedResults.length > 0) {
+        const failed = response.failedResults[0];
+        return {
+          success: false,
+          url: failed.url,
+          error: failed.error || 'Failed to extract content from URL',
+        };
+      }
+
+      return {
+        success: false,
+        url,
+        error: 'No content returned from URL',
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error occurred';
+      return {
+        success: false,
+        url,
+        error: message,
+      };
+    }
+  },
+});
 
 export const parseJobDescription = tool({
   description: 'Parse a job description to extract requirements, keywords, and role information. Call this when user provides a job description.',

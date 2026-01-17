@@ -25,6 +25,7 @@ import {
 
 // Research tools
 import {
+  fetchJobFromUrl,
   parseJobDescription,
   buildSuccessProfile,
 } from './tools/research';
@@ -47,6 +48,10 @@ import {
 export const resumeAgent = new ToolLoopAgent({
   model: anthropic('claude-opus-4-5-20251101'),
   instructions: RESUME_AGENT_INSTRUCTIONS,
+  experimental_telemetry: {
+    isEnabled: true,
+    functionId: 'resume-agent',
+  },
   tools: {
     // Library management - Achievements
     getLibraryStatus,
@@ -76,6 +81,7 @@ export const resumeAgent = new ToolLoopAgent({
     parseResumeIntoLibrary,
 
     // Research
+    fetchJobFromUrl,
     parseJobDescription,
     buildSuccessProfile,
 
