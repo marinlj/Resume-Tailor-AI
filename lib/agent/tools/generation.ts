@@ -109,9 +109,13 @@ export const generateResume = tool({
       }),
     ]);
 
-    // Group matches by company/role
-    const groupedByRole = new Map<string, typeof matches>();
-    for (const match of matches) {
+    // Separate achievements from library items
+    const achievementMatches = matches.filter((m) => !m.isLibraryItem);
+    const libraryItemMatches = matches.filter((m) => m.isLibraryItem);
+
+    // Group achievements by company/role (exclude library items)
+    const groupedByRole = new Map<string, typeof achievementMatches>();
+    for (const match of achievementMatches) {
       const key = `${match.company}|${match.title}`;
       if (!groupedByRole.has(key)) {
         groupedByRole.set(key, []);
@@ -200,27 +204,28 @@ export const generateResume = tool({
       return sectionMarkdown;
     };
 
-    // Helper function to generate generic sections from LibraryItem
-    const generateGenericSection = async (type: string, label: string): Promise<string> => {
-      const items = await prisma.libraryItem.findMany({
-        where: { userId, type },
-        orderBy: { createdAt: 'desc' },
-      });
+    // Helper function to generate generic sections from matched LibraryItems
+    const generateGenericSection = (type: string, label: string): string => {
+      // Filter matched library items by type (only include items that were matched)
+      const matchedItems = libraryItemMatches.filter((m) => m.itemType === type);
 
-      if (items.length === 0) return '';
+      if (matchedItems.length === 0) return '';
 
       let sectionMarkdown = `## ${label}\n\n`;
-      for (const item of items) {
-        sectionMarkdown += `**${item.title}**`;
-        if (item.subtitle) sectionMarkdown += ` | ${item.subtitle}`;
-        if (item.date) sectionMarkdown += ` | ${item.date}`;
+      for (const match of matchedItems) {
+        // Use the match data which includes title, company (as subtitle), etc.
+        sectionMarkdown += `**${match.title}**`;
+        if (match.company && match.company !== match.title) {
+          sectionMarkdown += ` | ${match.company}`;
+        }
+        if (match.startDate) {
+          sectionMarkdown += ` | ${match.startDate}`;
+          if (match.endDate) sectionMarkdown += ` - ${match.endDate}`;
+        }
         sectionMarkdown += '\n';
 
-        if (item.bullets && item.bullets.length > 0) {
-          for (const bullet of item.bullets) {
-            sectionMarkdown += `- ${bullet}\n`;
-          }
-        }
+        // The achievementText contains the formatted description
+        sectionMarkdown += `- ${match.achievementText}\n`;
         sectionMarkdown += '\n';
       }
       return sectionMarkdown;
@@ -242,8 +247,8 @@ export const generateResume = tool({
           markdown += generateEducationSection(section.label);
           break;
         default:
-          // Handle dynamic section types from LibraryItem
-          markdown += await generateGenericSection(section.type, section.label);
+          // Handle dynamic section types from matched LibraryItems
+          markdown += generateGenericSection(section.type, section.label);
           break;
       }
     }

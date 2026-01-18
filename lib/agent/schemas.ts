@@ -251,6 +251,8 @@ export const matchedAchievementSchema = z.object({
   location: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  isLibraryItem: z.boolean().optional(),
+  itemType: z.string().optional(),
 });
 
 export const matchedAchievementsArraySchema = z.array(matchedAchievementSchema);
