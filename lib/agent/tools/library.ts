@@ -1212,3 +1212,53 @@ export const deleteLibraryItem = tool({
     }
   },
 });
+
+// ============================================================================
+// Professional Summary Tools
+// ============================================================================
+
+export const getProfessionalSummary = tool({
+  description: 'Get the user\'s professional summary from the library',
+  inputSchema: z.object({}),
+  execute: async () => {
+    const userId = getTempUserId();
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { professionalSummary: true },
+      });
+
+      return {
+        success: true,
+        professionalSummary: user?.professionalSummary ?? null,
+      };
+    } catch {
+      return { success: false, error: 'Failed to fetch professional summary' };
+    }
+  },
+});
+
+export const updateProfessionalSummary = tool({
+  description: 'Update the user\'s professional summary in the library',
+  inputSchema: z.object({
+    summary: z.string().describe('Professional summary text (2-4 sentences)'),
+  }),
+  execute: async ({ summary }) => {
+    const userId = getTempUserId();
+    try {
+      await prisma.user.upsert({
+        where: { id: userId },
+        update: { professionalSummary: summary },
+        create: { id: userId, email: `${userId}@temp.local`, professionalSummary: summary },
+      });
+
+      return {
+        success: true,
+        professionalSummary: summary,
+        message: 'Professional summary updated.',
+      };
+    } catch {
+      return { success: false, error: 'Failed to update professional summary' };
+    }
+  },
+});

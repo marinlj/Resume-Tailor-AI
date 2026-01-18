@@ -35,6 +35,9 @@ import {
   addLibraryItems,
   updateLibraryItem,
   deleteLibraryItem,
+  // Professional summary tools
+  getProfessionalSummary,
+  updateProfessionalSummary,
   // Parsing tools
   parseResumeIntoLibrary,
 } from './tools/library';
@@ -113,6 +116,10 @@ export const resumeAgent = new ToolLoopAgent({
     addLibraryItems,
     updateLibraryItem,
     deleteLibraryItem,
+
+    // Library management - Professional Summary
+    getProfessionalSummary,
+    updateProfessionalSummary,
 
     // Library management - Parsing
     parseResumeIntoLibrary,
