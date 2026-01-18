@@ -1,7 +1,11 @@
 'use client';
 
-import { Mail, Phone, MapPin, Linkedin, Globe, Github } from 'lucide-react';
+import { useState } from 'react';
+import { Mail, Phone, MapPin, Linkedin, Globe, Github, Pencil, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 function normalizeUrl(url: string): string {
   if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -24,9 +28,52 @@ interface ContactDetails {
 
 interface ContactDetailsCardProps {
   contactDetails: ContactDetails | null;
+  onSave?: (data: Partial<ContactDetails>) => Promise<void>;
 }
 
-export function ContactDetailsCard({ contactDetails }: ContactDetailsCardProps) {
+export function ContactDetailsCard({ contactDetails, onSave }: ContactDetailsCardProps) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    fullName: contactDetails?.fullName || '',
+    email: contactDetails?.email || '',
+    phone: contactDetails?.phone || '',
+    location: contactDetails?.location || '',
+    linkedinUrl: contactDetails?.linkedinUrl || '',
+    portfolioUrl: contactDetails?.portfolioUrl || '',
+    githubUrl: contactDetails?.githubUrl || '',
+    headline: contactDetails?.headline || '',
+  });
+
+  const handleSave = async () => {
+    if (!onSave) return;
+    setSaving(true);
+    try {
+      await onSave(formData);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setFormData({
+      fullName: contactDetails?.fullName || '',
+      email: contactDetails?.email || '',
+      phone: contactDetails?.phone || '',
+      location: contactDetails?.location || '',
+      linkedinUrl: contactDetails?.linkedinUrl || '',
+      portfolioUrl: contactDetails?.portfolioUrl || '',
+      githubUrl: contactDetails?.githubUrl || '',
+      headline: contactDetails?.headline || '',
+    });
+    setEditing(false);
+  };
+
+  const handleChange = (field: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
   if (!contactDetails) {
     return (
       <div className="relative py-16 px-8 text-center border-b border-editorial-line">
@@ -35,6 +82,118 @@ export function ContactDetailsCard({ contactDetails }: ContactDetailsCardProps) 
           No contact details yet. Upload a resume or ask the agent to add them.
         </p>
       </div>
+    );
+  }
+
+  if (editing) {
+    return (
+      <header className="relative pb-12 mb-4">
+        <div className="absolute inset-0 -mx-6 bg-gradient-to-b from-editorial-accent-muted/20 via-transparent to-transparent" />
+
+        <div className="relative border border-editorial-accent/30 bg-editorial-accent-muted/5 rounded-lg p-6">
+          <h2 className="font-serif text-xl font-medium mb-6">Edit Contact Details</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name *</Label>
+              <Input
+                id="fullName"
+                value={formData.fullName}
+                onChange={handleChange('fullName')}
+                placeholder="Your full name"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange('email')}
+                placeholder="your.email@example.com"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={handleChange('phone')}
+                placeholder="+1 (555) 123-4567"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={handleChange('location')}
+                placeholder="City, State/Country"
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="headline">Professional Headline</Label>
+              <Input
+                id="headline"
+                value={formData.headline}
+                onChange={handleChange('headline')}
+                placeholder="e.g., Senior Software Engineer | Full-Stack Developer"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
+              <Input
+                id="linkedinUrl"
+                type="url"
+                value={formData.linkedinUrl}
+                onChange={handleChange('linkedinUrl')}
+                placeholder="linkedin.com/in/yourprofile"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="githubUrl">GitHub URL</Label>
+              <Input
+                id="githubUrl"
+                type="url"
+                value={formData.githubUrl}
+                onChange={handleChange('githubUrl')}
+                placeholder="github.com/yourusername"
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="portfolioUrl">Portfolio URL</Label>
+              <Input
+                id="portfolioUrl"
+                type="url"
+                value={formData.portfolioUrl}
+                onChange={handleChange('portfolioUrl')}
+                placeholder="yourportfolio.com"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 mt-6">
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              <Check size={14} className="mr-1" />
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleCancel}>
+              <X size={14} className="mr-1" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </header>
     );
   }
 
@@ -50,8 +209,21 @@ export function ContactDetailsCard({ contactDetails }: ContactDetailsCardProps) 
       <div className="absolute inset-0 -mx-6 bg-gradient-to-b from-editorial-accent-muted/20 via-transparent to-transparent" />
 
       <div className="relative">
+        {/* Edit button */}
+        {onSave && !editing && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEditing(true)}
+            className="absolute top-0 right-0"
+          >
+            <Pencil size={14} className="mr-1" />
+            Edit
+          </Button>
+        )}
+
         {/* Name - large editorial serif */}
-        <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight mb-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight mb-3 animate-in fade-in slide-in-from-bottom-2 duration-500 pr-20">
           {contactDetails.fullName}
         </h1>
 
