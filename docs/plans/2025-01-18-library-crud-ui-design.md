@@ -125,13 +125,14 @@ This approach:
 
 ### 4. Experience (Roles + Achievements)
 
-**Current state:** Collapsible role cards with nested achievement bullets and tags.
+**Current state:** Collapsible role cards with nested achievement bullets and tags. Role summary is displayed as italic text below the role header.
 
 **Add CRUD:**
 
 **For Roles:**
 - "+ Add Role" button in section header
 - Each role header shows edit/delete icons on hover
+- **Role Summary** gets its own quick-edit button (pencil icon) next to the summary text, similar to ProfessionalSummaryCard pattern
 
 **Role form fields:**
 | Field | Type | Required | Notes |
@@ -141,7 +142,14 @@ This approach:
 | location | Input | No | |
 | startDate | Input (month picker) | No | |
 | endDate | Input (month picker) | No | Leave blank for "Present" |
-| summary | Textarea | No | Brief role description |
+| summary | Textarea | No | **Role summary/description** - 1-2 sentences describing your role and key responsibilities |
+
+**Role Summary UX:**
+- Displayed below role header as italic text
+- Shows "Edit summary" pencil icon on hover (or always visible if no summary exists)
+- Clicking opens inline Textarea with Save/Cancel buttons
+- Placeholder: "Add a brief description of your role and responsibilities..."
+- Can also be edited via the full role edit form
 
 **For Achievements (nested under role):**
 - "+ Add Achievement" button at bottom of each role's achievement list
@@ -436,13 +444,24 @@ Pattern follows Skills API routes.
 - Modify: `app/(main)/library/page.tsx`
 
 **Changes:**
-- Add edit/delete icons to role header
+
+**Role Header:**
+- Add edit/delete icons to role header (right side, visible on hover)
 - Add "+ Add Role" button in Experience section header (page.tsx)
-- Add inline role edit form
+- Add inline role edit form (company, title, location, dates)
+
+**Role Summary/Description (key feature):**
+- Add quick-edit pencil icon next to summary text (or "Add summary" link if empty)
+- Clicking pencil icon expands inline Textarea below role header
+- Save/Cancel buttons appear below Textarea
+- Uses same pattern as ProfessionalSummaryCard
+- API: `PUT /api/roles/[id]` with `{ summary: "..." }`
+
+**Achievements:**
 - Add "+ Add Achievement" button at bottom of achievements list
-- Add edit/delete icons to each achievement
-- Add inline achievement edit form
-- Add delete confirmation dialogs
+- Add edit/delete icons to each achievement (visible on hover)
+- Add inline achievement edit form (text + tags)
+- Add delete confirmation dialogs for roles and achievements
 
 ---
 
