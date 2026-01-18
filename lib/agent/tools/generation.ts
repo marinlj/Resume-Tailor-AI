@@ -152,6 +152,11 @@ export const generateResume = tool({
         sectionMarkdown += `**${company}**${firstMatch.location ? ` | ${firstMatch.location}` : ''}\n`;
         sectionMarkdown += `${title}${firstMatch.startDate ? `, ${firstMatch.startDate} - ${firstMatch.endDate || 'Present'}` : ''}\n\n`;
 
+        // Add role summary if enabled and available
+        if (structure?.includeRoleSummaries && firstMatch.roleSummary) {
+          sectionMarkdown += `_${firstMatch.roleSummary}_\n\n`;
+        }
+
         for (const match of roleMatches) {
           sectionMarkdown += `- ${match.achievementText}\n`;
         }

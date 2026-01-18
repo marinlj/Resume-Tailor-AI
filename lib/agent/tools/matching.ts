@@ -73,6 +73,7 @@ export const matchAchievements = tool({
         location: role.location,
         startDate: role.startDate?.toISOString().slice(0, 7) ?? null,
         endDate: role.endDate?.toISOString().slice(0, 7) ?? null,
+        roleSummary: role.summary,
         isLibraryItem: false,
       }))
     );
@@ -158,6 +159,7 @@ Return scores for ALL achievements.`;
           endDate: item.endDate,
           score: match.score,
           matchedRequirements: match.matchedRequirements,
+          ...(!item.isLibraryItem && (item as { roleSummary: string | null }).roleSummary && { roleSummary: (item as { roleSummary: string | null }).roleSummary }),
           ...(item.isLibraryItem && { isLibraryItem: true, itemType: (item as { itemType: string }).itemType }),
         };
       }).filter((item): item is NonNullable<typeof item> => item !== null);

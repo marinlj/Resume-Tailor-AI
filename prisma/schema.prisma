@@ -200,12 +200,13 @@ model ContactDetails {
 }
 
 model ResumeStructure {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  contactFields String[]  // ["name", "email", "phone", "linkedin"]
-  sections      Json      // [{ type: "experience", label: "Professional Experience" }, ...]
+  contactFields        String[]  // ["name", "email", "phone", "linkedin"]
+  sections             Json      // [{ type: "experience", label: "Professional Experience" }, ...]
+  includeRoleSummaries Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
