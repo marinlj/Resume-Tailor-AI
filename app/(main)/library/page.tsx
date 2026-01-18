@@ -7,7 +7,7 @@ import { SkillsList } from '@/components/library/SkillsList';
 import { EducationList } from '@/components/library/EducationList';
 import { LibraryItemsList, getTypeLabel } from '@/components/library/LibraryItemsList';
 import { RoleCard } from '@/components/library/RoleCard';
-import { cn } from '@/lib/utils';
+import { SectionHeader } from '@/components/library/SectionHeader';
 
 interface Achievement {
   id: string;
@@ -77,30 +77,6 @@ interface LibraryData {
   education: Education[];
   libraryItems: LibraryItem[];
   professionalSummary: string | null;
-}
-
-function SectionHeader({
-  title,
-  count,
-  className,
-}: {
-  title: string;
-  count?: number;
-  className?: string;
-}) {
-  return (
-    <div className={cn("flex items-center gap-4 mb-6", className)}>
-      <h2 className="font-serif text-2xl font-medium text-foreground">
-        {title}
-        {count !== undefined && (
-          <span className="ml-2 text-sm font-sans font-normal text-muted-foreground">
-            ({count})
-          </span>
-        )}
-      </h2>
-      <div className="h-px flex-1 bg-gradient-to-r from-editorial-line to-transparent" />
-    </div>
-  );
 }
 
 function LoadingSkeleton() {
