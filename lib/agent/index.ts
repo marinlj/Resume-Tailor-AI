@@ -5,26 +5,38 @@ import { RESUME_AGENT_INSTRUCTIONS } from './instructions';
 // Library tools
 import {
   getLibraryStatus,
+  // Role tools
+  getRoles,
+  addRole,
+  updateRole,
+  deleteRole,
+  addRolesWithAchievements,
+  // Achievement tools
   getAchievements,
   addAchievement,
   addMultipleAchievements,
   updateAchievement,
   deleteAchievement,
+  // Skills tools
   getSkills,
   addSkills,
   updateSkill,
   deleteSkill,
+  // Education tools
   getEducation,
   addEducation,
   updateEducation,
   deleteEducation,
-  parseResumeIntoLibrary,
+  // Contact details tools
   getContactDetails,
   updateContactDetails,
+  // Library items tools
   getLibraryItems,
   addLibraryItems,
   updateLibraryItem,
   deleteLibraryItem,
+  // Parsing tools
+  parseResumeIntoLibrary,
 } from './tools/library';
 
 // Research tools
@@ -63,8 +75,17 @@ export const resumeAgent = new ToolLoopAgent({
     functionId: 'resume-agent',
   },
   tools: {
-    // Library management - Achievements
+    // Library management - Status
     getLibraryStatus,
+
+    // Library management - Roles
+    getRoles,
+    addRole,
+    updateRole,
+    deleteRole,
+    addRolesWithAchievements,
+
+    // Library management - Achievements
     getAchievements,
     addAchievement,
     addMultipleAchievements,

@@ -9,13 +9,38 @@ export const libraryStatusOutputSchema = z.object({
 
 export type LibraryStatusOutput = z.infer<typeof libraryStatusOutputSchema>;
 
-// Achievement
-export const achievementInputSchema = z.object({
+// Role schemas
+export const roleInputSchema = z.object({
   company: z.string().describe('Company name'),
   title: z.string().describe('Job title'),
   location: z.string().optional().describe('Location (city, state/country)'),
   startDate: z.string().optional().describe('Start date (YYYY-MM format)'),
   endDate: z.string().optional().describe('End date (YYYY-MM format) or "present"'),
+  summary: z.string().optional().describe('Role summary (1-2 sentences)'),
+});
+
+export type RoleInput = z.infer<typeof roleInputSchema>;
+
+export const roleOutputSchema = z.object({
+  id: z.string(),
+  company: z.string(),
+  title: z.string(),
+  location: z.string().nullable(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  summary: z.string().nullable(),
+  achievements: z.array(z.object({
+    id: z.string(),
+    text: z.string(),
+    tags: z.array(z.string()),
+  })),
+});
+
+export type RoleOutput = z.infer<typeof roleOutputSchema>;
+
+// Achievement (belongs to a Role)
+export const achievementInputSchema = z.object({
+  roleId: z.string().describe('ID of the role this achievement belongs to'),
   text: z.string().describe('The achievement bullet text'),
   tags: z.array(z.string()).describe('Tags for matching (e.g., leadership, metrics, cost-reduction)'),
 });
@@ -24,11 +49,7 @@ export type AchievementInput = z.infer<typeof achievementInputSchema>;
 
 export const achievementOutputSchema = z.object({
   id: z.string(),
-  company: z.string(),
-  title: z.string(),
-  location: z.string().nullable(),
-  startDate: z.string().nullable(),
-  endDate: z.string().nullable(),
+  roleId: z.string(),
   text: z.string(),
   tags: z.array(z.string()),
 });

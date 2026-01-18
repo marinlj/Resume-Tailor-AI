@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { prisma } from '@/lib/prisma';
-import { achievementInputSchema, skillInputSchema, educationInputSchema, contactDetailsInputSchema, libraryItemInputSchema } from '../schemas';
+import { achievementInputSchema, skillInputSchema, educationInputSchema, contactDetailsInputSchema, libraryItemInputSchema, roleInputSchema } from '../schemas';
 import { z } from 'zod';
 import { getTempUserId } from './utils';
 
@@ -10,9 +10,10 @@ export const getLibraryStatus = tool({
   execute: async () => {
     const userId = getTempUserId();
     try {
-      const [count, latest] = await Promise.all([
-        prisma.achievement.count({ where: { userId } }),
-        prisma.achievement.findFirst({
+      const [roleCount, achievementCount, latestRole] = await Promise.all([
+        prisma.role.count({ where: { userId } }),
+        prisma.achievement.count({ where: { role: { userId } } }),
+        prisma.role.findFirst({
           where: { userId },
           orderBy: { updatedAt: 'desc' },
           select: { updatedAt: true },
@@ -21,9 +22,12 @@ export const getLibraryStatus = tool({
 
       return {
         success: true,
-        exists: count > 0,
-        count,
-        lastUpdated: latest?.updatedAt.toISOString() ?? null,
+        exists: roleCount > 0 || achievementCount > 0,
+        roleCount,
+        achievementCount,
+        // For backwards compatibility, also include 'count' as achievementCount
+        count: achievementCount,
+        lastUpdated: latestRole?.updatedAt.toISOString() ?? null,
       };
     } catch (error) {
       return { success: false, error: 'Failed to check library status' };
@@ -32,40 +36,68 @@ export const getLibraryStatus = tool({
 });
 
 export const getAchievements = tool({
-  description: 'Get achievements from the library, optionally filtered by tags',
+  description: 'Get achievements from the library, optionally filtered by tags or role',
   inputSchema: z.object({
     tags: z.array(z.string()).optional().describe('Filter by tags (OR logic)'),
-    company: z.string().optional().describe('Filter by company name'),
+    roleId: z.string().optional().describe('Filter by role ID'),
+    company: z.string().optional().describe('Filter by company name (searches in role)'),
   }),
-  execute: async ({ tags, company }) => {
+  execute: async ({ tags, roleId, company }) => {
     const userId = getTempUserId();
     try {
-      const where: Record<string, unknown> = { userId };
+      // Build the where clause - achievements are filtered via their role
+      const where: Record<string, unknown> = {
+        role: { userId },
+      };
 
       if (tags && tags.length > 0) {
         where.tags = { hasSome: tags };
       }
 
+      if (roleId) {
+        where.roleId = roleId;
+      }
+
       if (company) {
-        where.company = { contains: company, mode: 'insensitive' };
+        where.role = {
+          ...where.role as object,
+          company: { contains: company, mode: 'insensitive' },
+        };
       }
 
       const achievements = await prisma.achievement.findMany({
         where,
-        orderBy: [{ company: 'asc' }, { startDate: 'desc' }],
+        include: {
+          role: {
+            select: {
+              id: true,
+              company: true,
+              title: true,
+              location: true,
+              startDate: true,
+              endDate: true,
+            },
+          },
+        },
+        orderBy: [{ role: { company: 'asc' } }, { role: { startDate: 'desc' } }],
       });
 
       return {
         success: true,
         achievements: achievements.map((a) => ({
           id: a.id,
-          company: a.company,
-          title: a.title,
-          location: a.location,
-          startDate: a.startDate?.toISOString().slice(0, 7) ?? null,
-          endDate: a.endDate?.toISOString().slice(0, 7) ?? null,
+          roleId: a.roleId,
           text: a.text,
           tags: a.tags,
+          // Include role info for context
+          role: {
+            id: a.role.id,
+            company: a.role.company,
+            title: a.role.title,
+            location: a.role.location,
+            startDate: a.role.startDate?.toISOString().slice(0, 7) ?? null,
+            endDate: a.role.endDate?.toISOString().slice(0, 7) ?? null,
+          },
         })),
       };
     } catch (error) {
@@ -75,41 +107,46 @@ export const getAchievements = tool({
 });
 
 export const addAchievement = tool({
-  description: 'Add a new achievement to the master library',
+  description: 'Add a new achievement to a role in the library',
   inputSchema: achievementInputSchema,
   execute: async (input) => {
     const userId = getTempUserId();
     try {
-      // Ensure user exists
-      await prisma.user.upsert({
-        where: { id: userId },
-        update: {},
-        create: { id: userId, email: `${userId}@temp.local` },
+      // Verify the role belongs to this user
+      const role = await prisma.role.findFirst({
+        where: { id: input.roleId, userId },
       });
+
+      if (!role) {
+        return { success: false, error: 'Role not found or does not belong to user' };
+      }
 
       const achievement = await prisma.achievement.create({
         data: {
-          userId,
-          company: input.company,
-          title: input.title,
-          location: input.location ?? null,
-          startDate: input.startDate ? new Date(input.startDate) : null,
-          endDate: input.endDate === 'present' ? null : input.endDate ? new Date(input.endDate) : null,
+          roleId: input.roleId,
           text: input.text,
           tags: input.tags,
+        },
+        include: {
+          role: {
+            select: {
+              company: true,
+              title: true,
+            },
+          },
         },
       });
 
       return {
         success: true,
         id: achievement.id,
-        company: achievement.company,
-        title: achievement.title,
-        location: achievement.location,
-        startDate: achievement.startDate?.toISOString().slice(0, 7) ?? null,
-        endDate: achievement.endDate?.toISOString().slice(0, 7) ?? null,
+        roleId: achievement.roleId,
         text: achievement.text,
         tags: achievement.tags,
+        role: {
+          company: achievement.role.company,
+          title: achievement.role.title,
+        },
       };
     } catch (error) {
       return { success: false, error: 'Failed to add achievement' };
@@ -118,12 +155,16 @@ export const addAchievement = tool({
 });
 
 export const addMultipleAchievements = tool({
-  description: 'Add multiple achievements to the library at once (used after parsing a resume)',
+  description: 'Add multiple achievements to a single role (all must belong to the same role)',
   inputSchema: z.object({
-    achievements: z.array(achievementInputSchema).describe('Array of achievements to add'),
+    roleId: z.string().describe('The role ID to add achievements to'),
+    achievements: z.array(z.object({
+      text: z.string().describe('The achievement bullet text'),
+      tags: z.array(z.string()).describe('Tags for matching'),
+    })).describe('Array of achievements to add'),
   }),
-  execute: async ({ achievements }) => {
-    console.log('[addMultipleAchievements] Starting with', achievements.length, 'achievements');
+  execute: async ({ roleId, achievements }) => {
+    console.log('[addMultipleAchievements] Starting with', achievements.length, 'achievements for role', roleId);
     let userId: string;
     try {
       userId = getTempUserId();
@@ -134,24 +175,19 @@ export const addMultipleAchievements = tool({
     }
 
     try {
-      // Ensure user exists
-      console.log('[addMultipleAchievements] Upserting user...');
-      await prisma.user.upsert({
-        where: { id: userId },
-        update: {},
-        create: { id: userId, email: `${userId}@temp.local` },
+      // Verify the role belongs to this user
+      const role = await prisma.role.findFirst({
+        where: { id: roleId, userId },
       });
-      console.log('[addMultipleAchievements] User upserted successfully');
+
+      if (!role) {
+        return { success: false, error: 'Role not found or does not belong to user' };
+      }
 
       console.log('[addMultipleAchievements] Creating achievements...');
       const created = await prisma.achievement.createMany({
         data: achievements.map((a) => ({
-          userId,
-          company: a.company,
-          title: a.title,
-          location: a.location ?? null,
-          startDate: a.startDate ? new Date(a.startDate) : null,
-          endDate: a.endDate === 'present' ? null : a.endDate ? new Date(a.endDate) : null,
+          roleId,
           text: a.text,
           tags: a.tags,
         })),
@@ -161,7 +197,8 @@ export const addMultipleAchievements = tool({
       return {
         success: true,
         added: created.count,
-        message: `Successfully added ${created.count} achievements to your library.`,
+        roleId,
+        message: `Successfully added ${created.count} achievements to the role.`,
       };
     } catch (error) {
       console.error('[addMultipleAchievements] Error:', error);
@@ -171,40 +208,160 @@ export const addMultipleAchievements = tool({
   },
 });
 
+// Schema for adding roles with their achievements in one operation (used for resume parsing)
+const roleWithAchievementsSchema = z.object({
+  company: z.string().describe('Company name'),
+  title: z.string().describe('Job title'),
+  location: z.string().optional().describe('Location (city, state/country)'),
+  startDate: z.string().optional().describe('Start date (YYYY-MM format)'),
+  endDate: z.string().optional().describe('End date (YYYY-MM format) or "present"'),
+  summary: z.string().optional().describe('Role summary (1-2 sentences)'),
+  achievements: z.array(z.object({
+    text: z.string().describe('The achievement bullet text'),
+    tags: z.array(z.string()).describe('Tags for matching'),
+  })).describe('Achievements for this role'),
+});
+
+export const addRolesWithAchievements = tool({
+  description: 'Add multiple roles with their achievements in one operation (used after parsing a resume). Each role includes company, title, dates, and its achievements.',
+  inputSchema: z.object({
+    roles: z.array(roleWithAchievementsSchema).describe('Array of roles with their achievements'),
+  }),
+  execute: async ({ roles }) => {
+    console.log('[addRolesWithAchievements] Starting with', roles.length, 'roles');
+    let userId: string;
+    try {
+      userId = getTempUserId();
+      console.log('[addRolesWithAchievements] userId:', userId);
+    } catch (error) {
+      console.error('[addRolesWithAchievements] Failed to get userId:', error);
+      return { success: false, error: `Failed to get user context: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+
+    try {
+      // Ensure user exists
+      console.log('[addRolesWithAchievements] Upserting user...');
+      await prisma.user.upsert({
+        where: { id: userId },
+        update: {},
+        create: { id: userId, email: `${userId}@temp.local` },
+      });
+      console.log('[addRolesWithAchievements] User upserted successfully');
+
+      let totalRoles = 0;
+      let totalAchievements = 0;
+      const createdRoles: Array<{ id: string; company: string; title: string; achievementCount: number }> = [];
+
+      // Create each role with its achievements
+      for (const roleData of roles) {
+        const role = await prisma.role.create({
+          data: {
+            userId,
+            company: roleData.company,
+            title: roleData.title,
+            location: roleData.location ?? null,
+            startDate: roleData.startDate ? new Date(roleData.startDate) : null,
+            endDate: roleData.endDate === 'present' ? null : roleData.endDate ? new Date(roleData.endDate) : null,
+            summary: roleData.summary ?? null,
+            achievements: {
+              create: roleData.achievements.map((a) => ({
+                text: a.text,
+                tags: a.tags,
+              })),
+            },
+          },
+        });
+
+        totalRoles++;
+        totalAchievements += roleData.achievements.length;
+        createdRoles.push({
+          id: role.id,
+          company: role.company,
+          title: role.title,
+          achievementCount: roleData.achievements.length,
+        });
+      }
+
+      console.log('[addRolesWithAchievements] Successfully created', totalRoles, 'roles with', totalAchievements, 'achievements');
+
+      return {
+        success: true,
+        rolesAdded: totalRoles,
+        achievementsAdded: totalAchievements,
+        roles: createdRoles,
+        message: `Successfully added ${totalRoles} roles with ${totalAchievements} achievements to your library.`,
+      };
+    } catch (error) {
+      console.error('[addRolesWithAchievements] Error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: `Failed to add roles: ${errorMessage}` };
+    }
+  },
+});
+
 export const updateAchievement = tool({
   description: 'Update an existing achievement in the library',
   inputSchema: z.object({
     id: z.string().describe('Achievement ID to update'),
-    updates: achievementInputSchema.partial().describe('Fields to update'),
+    updates: z.object({
+      text: z.string().optional().describe('The achievement bullet text'),
+      tags: z.array(z.string()).optional().describe('Tags for matching'),
+      roleId: z.string().optional().describe('Move achievement to a different role'),
+    }).describe('Fields to update'),
   }),
   execute: async ({ id, updates }) => {
     const userId = getTempUserId();
     try {
+      // First verify the achievement belongs to a role owned by this user
+      const existingAchievement = await prisma.achievement.findFirst({
+        where: {
+          id,
+          role: { userId },
+        },
+        include: { role: true },
+      });
+
+      if (!existingAchievement) {
+        return { success: false, error: 'Achievement not found or does not belong to user' };
+      }
+
+      // If moving to a new role, verify that role also belongs to the user
+      if (updates.roleId && updates.roleId !== existingAchievement.roleId) {
+        const newRole = await prisma.role.findFirst({
+          where: { id: updates.roleId, userId },
+        });
+        if (!newRole) {
+          return { success: false, error: 'Target role not found or does not belong to user' };
+        }
+      }
+
       const achievement = await prisma.achievement.update({
-        where: { id, userId },
+        where: { id },
         data: {
-          ...(updates.company && { company: updates.company }),
-          ...(updates.title && { title: updates.title }),
-          ...(updates.location !== undefined && { location: updates.location }),
-          ...(updates.startDate && { startDate: new Date(updates.startDate) }),
-          ...(updates.endDate && {
-            endDate: updates.endDate === 'present' ? null : new Date(updates.endDate)
-          }),
           ...(updates.text && { text: updates.text }),
           ...(updates.tags && { tags: updates.tags }),
+          ...(updates.roleId && { roleId: updates.roleId }),
+        },
+        include: {
+          role: {
+            select: {
+              company: true,
+              title: true,
+            },
+          },
         },
       });
 
       return {
         success: true,
         id: achievement.id,
-        company: achievement.company,
-        title: achievement.title,
-        location: achievement.location,
-        startDate: achievement.startDate?.toISOString().slice(0, 7) ?? null,
-        endDate: achievement.endDate?.toISOString().slice(0, 7) ?? null,
+        roleId: achievement.roleId,
         text: achievement.text,
         tags: achievement.tags,
+        role: {
+          company: achievement.role.company,
+          title: achievement.role.title,
+        },
       };
     } catch (error) {
       return { success: false, error: 'Achievement not found or update failed' };
@@ -220,13 +377,167 @@ export const deleteAchievement = tool({
   execute: async ({ id }) => {
     const userId = getTempUserId();
     try {
+      // Verify the achievement belongs to a role owned by this user
+      const achievement = await prisma.achievement.findFirst({
+        where: {
+          id,
+          role: { userId },
+        },
+      });
+
+      if (!achievement) {
+        return { success: false, error: 'Achievement not found or does not belong to user' };
+      }
+
       await prisma.achievement.delete({
-        where: { id, userId },
+        where: { id },
       });
 
       return { success: true, deleted: true, id };
     } catch (error) {
       return { success: false, error: 'Achievement not found or already deleted' };
+    }
+  },
+});
+
+// ============================================================================
+// Role Tools
+// ============================================================================
+
+export const getRoles = tool({
+  description: 'Get all roles (work experiences) from the library with their achievements',
+  inputSchema: z.object({}),
+  execute: async () => {
+    const userId = getTempUserId();
+    try {
+      const roles = await prisma.role.findMany({
+        where: { userId },
+        include: { achievements: true },
+        orderBy: [{ startDate: 'desc' }],
+      });
+
+      return {
+        success: true,
+        roles: roles.map((r) => ({
+          id: r.id,
+          company: r.company,
+          title: r.title,
+          location: r.location,
+          startDate: r.startDate?.toISOString().slice(0, 7) ?? null,
+          endDate: r.endDate?.toISOString().slice(0, 7) ?? null,
+          summary: r.summary,
+          achievements: r.achievements.map((a) => ({
+            id: a.id,
+            text: a.text,
+            tags: a.tags,
+          })),
+        })),
+      };
+    } catch (error) {
+      return { success: false, error: 'Failed to fetch roles' };
+    }
+  },
+});
+
+export const addRole = tool({
+  description: 'Add a new role (work experience) to the library',
+  inputSchema: roleInputSchema,
+  execute: async (input) => {
+    const userId = getTempUserId();
+    try {
+      await prisma.user.upsert({
+        where: { id: userId },
+        update: {},
+        create: { id: userId, email: `${userId}@temp.local` },
+      });
+
+      const role = await prisma.role.create({
+        data: {
+          userId,
+          company: input.company,
+          title: input.title,
+          location: input.location ?? null,
+          startDate: input.startDate ? new Date(input.startDate) : null,
+          endDate: input.endDate === 'present' ? null : input.endDate ? new Date(input.endDate) : null,
+          summary: input.summary ?? null,
+        },
+      });
+
+      return {
+        success: true,
+        id: role.id,
+        company: role.company,
+        title: role.title,
+        location: role.location,
+        startDate: role.startDate?.toISOString().slice(0, 7) ?? null,
+        endDate: role.endDate?.toISOString().slice(0, 7) ?? null,
+        summary: role.summary,
+      };
+    } catch (error) {
+      return { success: false, error: 'Failed to add role' };
+    }
+  },
+});
+
+export const updateRole = tool({
+  description: 'Update an existing role in the library',
+  inputSchema: z.object({
+    id: z.string().describe('Role ID to update'),
+    updates: roleInputSchema.partial().describe('Fields to update'),
+  }),
+  execute: async ({ id, updates }) => {
+    const userId = getTempUserId();
+    try {
+      const role = await prisma.role.update({
+        where: { id, userId },
+        data: {
+          ...(updates.company && { company: updates.company }),
+          ...(updates.title && { title: updates.title }),
+          ...(updates.location !== undefined && { location: updates.location }),
+          ...(updates.startDate && { startDate: new Date(updates.startDate) }),
+          ...(updates.endDate !== undefined && {
+            endDate: updates.endDate === 'present' ? null : updates.endDate ? new Date(updates.endDate) : null
+          }),
+          ...(updates.summary !== undefined && { summary: updates.summary }),
+        },
+        include: { achievements: true },
+      });
+
+      return {
+        success: true,
+        id: role.id,
+        company: role.company,
+        title: role.title,
+        location: role.location,
+        startDate: role.startDate?.toISOString().slice(0, 7) ?? null,
+        endDate: role.endDate?.toISOString().slice(0, 7) ?? null,
+        summary: role.summary,
+        achievements: role.achievements.map((a) => ({
+          id: a.id,
+          text: a.text,
+          tags: a.tags,
+        })),
+      };
+    } catch (error) {
+      return { success: false, error: 'Role not found or update failed' };
+    }
+  },
+});
+
+export const deleteRole = tool({
+  description: 'Delete a role and all its achievements from the library',
+  inputSchema: z.object({
+    id: z.string().describe('Role ID to delete'),
+  }),
+  execute: async ({ id }) => {
+    const userId = getTempUserId();
+    try {
+      await prisma.role.delete({
+        where: { id, userId },
+      });
+      return { success: true, deleted: true, id };
+    } catch (error) {
+      return { success: false, error: 'Role not found or already deleted' };
     }
   },
 });
@@ -666,10 +977,11 @@ Extract from the resume header:
 
 Call \`updateContactDetails\` with the extracted contact information.
 
-## 1. WORK EXPERIENCE (Achievements)
+## 1. WORK EXPERIENCE (Roles with Achievements)
 For each work experience section:
-- Identify the company, title, location, and dates
-- Extract each bullet point as a separate achievement
+- Identify the company, title, location, and dates for the ROLE
+- Extract each bullet point as a separate achievement under that role
+- Optionally extract a 1-2 sentence summary of the role
 - Suggest 2-5 tags for each achievement from this list:
   - Technical: engineering, technical, architecture, api, database, cloud, infrastructure, ai, ml, llm
   - Leadership: leadership, management, mentoring, team-building, cross-functional, hiring
@@ -679,7 +991,9 @@ For each work experience section:
   - Impact: cost-reduction, revenue, efficiency, automation, scale, growth
   - Process: agile, scrum, process-improvement, optimization
 
-Call \`addMultipleAchievements\` with the extracted work experience data.
+Call \`addRolesWithAchievements\` with an array of roles, where each role contains:
+- company, title, location, startDate, endDate, summary (optional)
+- achievements: array of { text, tags[] }
 
 ## 2. SKILLS
 Extract ALL skills from the skills/technical skills section:
@@ -730,7 +1044,7 @@ ${resumeText}
 ---`,
       schema: {
         contactDetails: '{ fullName, email, phone?, location?, linkedinUrl?, portfolioUrl?, githubUrl?, headline? }',
-        achievements: 'array of { company, title, location?, startDate (YYYY-MM), endDate (YYYY-MM or "present"), text, tags[] }',
+        roles: 'array of { company, title, location?, startDate (YYYY-MM), endDate (YYYY-MM or "present"), summary?, achievements: [{ text, tags[] }] }',
         skills: 'array of { name, category?, level? }',
         education: 'array of { institution, degree, field?, location?, startDate?, endDate?, gpa?, honors?, activities[]? }',
         libraryItems: 'array of { type, title, subtitle?, date?, location?, bullets[]?, tags[]?, url? }',
