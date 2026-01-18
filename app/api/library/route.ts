@@ -16,13 +16,14 @@ export async function GET() {
     const userId = session.user.id;
     console.log('[api/library] Querying library for userId:', userId);
 
-    const [contactDetails, achievements, skills, education, libraryItems] = await Promise.all([
+    const [contactDetails, roles, skills, education, libraryItems] = await Promise.all([
       prisma.contactDetails.findUnique({
         where: { userId },
       }),
-      prisma.achievement.findMany({
+      prisma.role.findMany({
         where: { userId },
-        orderBy: [{ company: 'asc' }, { startDate: 'desc' }],
+        include: { achievements: true },
+        orderBy: [{ startDate: 'desc' }],
       }),
       prisma.skill.findMany({
         where: { userId },
@@ -40,13 +41,14 @@ export async function GET() {
 
     console.log('[api/library] Results:', {
       hasContactDetails: !!contactDetails,
-      achievementsCount: achievements.length,
+      rolesCount: roles.length,
+      achievementsCount: roles.reduce((sum, role) => sum + role.achievements.length, 0),
       skillsCount: skills.length,
       educationCount: education.length,
       libraryItemsCount: libraryItems.length,
     });
 
-    return NextResponse.json({ contactDetails, achievements, skills, education, libraryItems });
+    return NextResponse.json({ contactDetails, roles, skills, education, libraryItems });
   } catch (error) {
     console.error('[api/library] Error:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';

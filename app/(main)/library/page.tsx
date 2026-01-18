@@ -1,22 +1,28 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AchievementCard } from '@/components/library/AchievementCard';
 import { ContactDetailsCard } from '@/components/library/ContactDetailsCard';
 import { SkillsList } from '@/components/library/SkillsList';
 import { EducationList } from '@/components/library/EducationList';
 import { LibraryItemsList, getTypeLabel } from '@/components/library/LibraryItemsList';
+import { RoleCard } from '@/components/library/RoleCard';
 import { cn } from '@/lib/utils';
 
 interface Achievement {
+  id: string;
+  text: string;
+  tags: string[];
+}
+
+interface Role {
   id: string;
   company: string;
   title: string;
   location: string | null;
   startDate: Date | null;
   endDate: Date | null;
-  text: string;
-  tags: string[];
+  summary: string | null;
+  achievements: Achievement[];
 }
 
 interface Skill {
@@ -65,7 +71,7 @@ interface LibraryItem {
 
 interface LibraryData {
   contactDetails: ContactDetails | null;
-  achievements: Achievement[];
+  roles: Role[];
   skills: Skill[];
   education: Education[];
   libraryItems: LibraryItem[];
@@ -124,7 +130,7 @@ function LoadingSkeleton() {
 export default function LibraryPage() {
   const [data, setData] = useState<LibraryData>({
     contactDetails: null,
-    achievements: [],
+    roles: [],
     skills: [],
     education: [],
     libraryItems: [],
@@ -144,7 +150,7 @@ export default function LibraryPage() {
       .then((result) => {
         console.log('[LibraryPage] API response:', {
           hasContactDetails: !!result.contactDetails,
-          achievementsCount: result.achievements?.length ?? 0,
+          rolesCount: result.roles?.length ?? 0,
           skillsCount: result.skills?.length ?? 0,
           educationCount: result.education?.length ?? 0,
           libraryItemsCount: result.libraryItems?.length ?? 0,
@@ -159,7 +165,7 @@ export default function LibraryPage() {
 
         setData({
           contactDetails: result.contactDetails || null,
-          achievements: result.achievements || [],
+          roles: result.roles || [],
           skills: result.skills || [],
           education: result.education || [],
           libraryItems: result.libraryItems || [],
@@ -193,7 +199,7 @@ export default function LibraryPage() {
 
   const isEmpty =
     !data.contactDetails &&
-    data.achievements.length === 0 &&
+    data.roles.length === 0 &&
     data.skills.length === 0 &&
     data.education.length === 0 &&
     data.libraryItems.length === 0;
@@ -231,15 +237,6 @@ export default function LibraryPage() {
     );
   }
 
-  // Group achievements by company
-  const groupedAchievements = data.achievements.reduce<
-    Record<string, Achievement[]>
-  >((acc, ach) => {
-    if (!acc[ach.company]) acc[ach.company] = [];
-    acc[ach.company].push(ach);
-    return acc;
-  }, {});
-
   // Group library items by type
   const groupedLibraryItems = data.libraryItems.reduce<
     Record<string, LibraryItem[]>
@@ -274,43 +271,23 @@ export default function LibraryPage() {
           )}
 
           {/* Work Experience Section */}
-          {data.achievements.length > 0 && (
+          {data.roles.length > 0 && (
             <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
               <SectionHeader
                 title="Experience"
-                count={data.achievements.length}
+                count={data.roles.reduce((sum, role) => sum + role.achievements.length, 0)}
               />
 
-              <div className="space-y-10">
-                {Object.entries(groupedAchievements).map(
-                  ([company, items], companyIndex) => (
-                    <div
-                      key={company}
-                      className="animate-in fade-in slide-in-from-bottom-1 duration-500"
-                      style={{ animationDelay: `${400 + companyIndex * 100}ms` }}
-                    >
-                      {/* Company header */}
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="h-8 w-1 rounded-full bg-editorial-accent" />
-                        <h3 className="font-serif text-xl font-medium text-foreground">
-                          {company}
-                        </h3>
-                      </div>
-
-                      {/* Achievements timeline */}
-                      <div className="ml-2">
-                        {items.map((achievement, index) => (
-                          <AchievementCard
-                            key={achievement.id}
-                            achievement={achievement}
-                            isFirst={index === 0}
-                            isLast={index === items.length - 1}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )
-                )}
+              <div className="space-y-4">
+                {data.roles.map((role, roleIndex) => (
+                  <div
+                    key={role.id}
+                    className="animate-in fade-in slide-in-from-bottom-1 duration-500"
+                    style={{ animationDelay: `${400 + roleIndex * 100}ms` }}
+                  >
+                    <RoleCard role={role} />
+                  </div>
+                ))}
               </div>
             </section>
           )}
