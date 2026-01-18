@@ -14,20 +14,39 @@ model User {
   image         String?
   emailVerified DateTime?
 
-  accounts       Account[]
-  sessions       Session[]
-  achievements   Achievement[]
-  skills         Skill[]
-  education      Education[]
-  preferences    Preference?
-  conversations  Conversation[]
-  resumes        GeneratedResume[]
-  contactDetails  ContactDetails?
-  resumeStructure ResumeStructure?
-  libraryItems    LibraryItem[]
+  accounts            Account[]
+  sessions            Session[]
+  achievements        Achievement[]
+  skills              Skill[]
+  education           Education[]
+  preferences         Preference?
+  conversations       Conversation[]
+  resumes             GeneratedResume[]
+  contactDetails      ContactDetails?
+  resumeStructure     ResumeStructure?
+  libraryItems        LibraryItem[]
+  roles               Role[]
+  professionalSummary String?
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model Role {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   String
+  title     String
+  location  String?
+  startDate DateTime?
+  endDate   DateTime?
+  summary   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, company, title, startDate])
+  @@index([userId])
 }
 
 model Account {
