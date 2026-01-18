@@ -4,14 +4,14 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ roleId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { roleId } = await params;
+  const { id: roleId } = await params;
 
   // Verify the role belongs to the user
   const role = await prisma.role.findFirst({
