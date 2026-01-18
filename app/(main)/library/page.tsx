@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { ContactDetailsCard } from '@/components/library/ContactDetailsCard';
 import { ProfessionalSummaryCard } from '@/components/library/ProfessionalSummaryCard';
 import { SkillsList } from '@/components/library/SkillsList';
@@ -8,6 +8,7 @@ import { EducationList } from '@/components/library/EducationList';
 import { LibraryItemsList, getTypeLabel } from '@/components/library/LibraryItemsList';
 import { RoleCard } from '@/components/library/RoleCard';
 import { SectionHeader } from '@/components/library/SectionHeader';
+import { RoleFormInline } from '@/components/library/RoleFormInline';
 
 interface Achievement {
   id: string;
@@ -116,6 +117,204 @@ export default function LibraryPage() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [addingRole, setAddingRole] = useState(false);
+
+  // ========== CONTACT DETAILS HANDLER ==========
+  const handleSaveContactDetails = useCallback(async (formData: Partial<ContactDetails>) => {
+    const res = await fetch('/api/contact-details', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
+    if (!res.ok) throw new Error('Failed to save contact details');
+    const { contactDetails } = await res.json();
+    setData((prev) => ({ ...prev, contactDetails }));
+  }, []);
+
+  // ========== SKILLS HANDLERS ==========
+  const handleAddSkill = useCallback(async (skill: { name: string; category?: string; level?: string }) => {
+    const res = await fetch('/api/skills', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(skill),
+    });
+    if (!res.ok) throw new Error('Failed to add skill');
+    const { skill: newSkill } = await res.json();
+    setData((prev) => ({ ...prev, skills: [...prev.skills, newSkill] }));
+  }, []);
+
+  const handleUpdateSkill = useCallback(async (id: string, skill: { name: string; category?: string; level?: string }) => {
+    const res = await fetch(`/api/skills/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(skill),
+    });
+    if (!res.ok) throw new Error('Failed to update skill');
+    const { skill: updated } = await res.json();
+    setData((prev) => ({
+      ...prev,
+      skills: prev.skills.map((s) => (s.id === id ? updated : s)),
+    }));
+  }, []);
+
+  const handleDeleteSkill = useCallback(async (id: string) => {
+    const res = await fetch(`/api/skills/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete skill');
+    setData((prev) => ({ ...prev, skills: prev.skills.filter((s) => s.id !== id) }));
+  }, []);
+
+  // ========== EDUCATION HANDLERS ==========
+  const handleAddEducation = useCallback(async (edu: Omit<Education, 'id'>) => {
+    const res = await fetch('/api/education', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(edu),
+    });
+    if (!res.ok) throw new Error('Failed to add education');
+    const { education: newEdu } = await res.json();
+    setData((prev) => ({ ...prev, education: [...prev.education, newEdu] }));
+  }, []);
+
+  const handleUpdateEducation = useCallback(async (id: string, edu: Partial<Education>) => {
+    const res = await fetch(`/api/education/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(edu),
+    });
+    if (!res.ok) throw new Error('Failed to update education');
+    const { education: updated } = await res.json();
+    setData((prev) => ({
+      ...prev,
+      education: prev.education.map((e) => (e.id === id ? updated : e)),
+    }));
+  }, []);
+
+  const handleDeleteEducation = useCallback(async (id: string) => {
+    const res = await fetch(`/api/education/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete education');
+    setData((prev) => ({ ...prev, education: prev.education.filter((e) => e.id !== id) }));
+  }, []);
+
+  // ========== ROLES HANDLERS ==========
+  const handleAddRole = useCallback(async (role: {
+    company: string;
+    title: string;
+    location: string | null;
+    startDate: Date | null;
+    endDate: Date | null;
+  }) => {
+    const res = await fetch('/api/roles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(role),
+    });
+    if (!res.ok) throw new Error('Failed to add role');
+    const { role: newRole } = await res.json();
+    // Ensure achievements array exists
+    const roleWithAchievements = { ...newRole, achievements: newRole.achievements || [] };
+    setData((prev) => ({ ...prev, roles: [...prev.roles, roleWithAchievements] }));
+    setAddingRole(false);
+  }, []);
+
+  const handleUpdateRole = useCallback(async (id: string, roleData: Partial<Role>) => {
+    const res = await fetch(`/api/roles/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(roleData),
+    });
+    if (!res.ok) throw new Error('Failed to update role');
+    const { role: updated } = await res.json();
+    setData((prev) => ({
+      ...prev,
+      roles: prev.roles.map((r) => (r.id === id ? { ...r, ...updated } : r)),
+    }));
+  }, []);
+
+  const handleDeleteRole = useCallback(async (id: string) => {
+    const res = await fetch(`/api/roles/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete role');
+    setData((prev) => ({ ...prev, roles: prev.roles.filter((r) => r.id !== id) }));
+  }, []);
+
+  // ========== ACHIEVEMENTS HANDLERS ==========
+  const handleAddAchievement = useCallback(async (roleId: string, achievement: { text: string; tags: string[] }) => {
+    const res = await fetch(`/api/roles/${roleId}/achievements`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(achievement),
+    });
+    if (!res.ok) throw new Error('Failed to add achievement');
+    const { achievement: newAchievement } = await res.json();
+    setData((prev) => ({
+      ...prev,
+      roles: prev.roles.map((role) =>
+        role.id === roleId
+          ? { ...role, achievements: [...role.achievements, newAchievement] }
+          : role
+      ),
+    }));
+  }, []);
+
+  const handleUpdateAchievement = useCallback(async (id: string, achievement: { text: string; tags: string[] }) => {
+    const res = await fetch(`/api/achievements/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(achievement),
+    });
+    if (!res.ok) throw new Error('Failed to update achievement');
+    const { achievement: updated } = await res.json();
+    setData((prev) => ({
+      ...prev,
+      roles: prev.roles.map((role) => ({
+        ...role,
+        achievements: role.achievements.map((a) => (a.id === id ? updated : a)),
+      })),
+    }));
+  }, []);
+
+  const handleDeleteAchievement = useCallback(async (id: string) => {
+    const res = await fetch(`/api/achievements/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete achievement');
+    setData((prev) => ({
+      ...prev,
+      roles: prev.roles.map((role) => ({
+        ...role,
+        achievements: role.achievements.filter((a) => a.id !== id),
+      })),
+    }));
+  }, []);
+
+  // ========== LIBRARY ITEMS HANDLERS ==========
+  const handleAddLibraryItem = useCallback(async (item: Omit<LibraryItem, 'id'>) => {
+    const res = await fetch('/api/library-items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    });
+    if (!res.ok) throw new Error('Failed to add library item');
+    const { libraryItem } = await res.json();
+    setData((prev) => ({ ...prev, libraryItems: [...prev.libraryItems, libraryItem] }));
+  }, []);
+
+  const handleUpdateLibraryItem = useCallback(async (id: string, item: Partial<LibraryItem>) => {
+    const res = await fetch(`/api/library-items/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    });
+    if (!res.ok) throw new Error('Failed to update library item');
+    const { libraryItem: updated } = await res.json();
+    setData((prev) => ({
+      ...prev,
+      libraryItems: prev.libraryItems.map((li) => (li.id === id ? updated : li)),
+    }));
+  }, []);
+
+  const handleDeleteLibraryItem = useCallback(async (id: string) => {
+    const res = await fetch(`/api/library-items/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete library item');
+    setData((prev) => ({ ...prev, libraryItems: prev.libraryItems.filter((li) => li.id !== id) }));
+  }, []);
 
   useEffect(() => {
     fetch('/api/library')
@@ -241,7 +440,10 @@ export default function LibraryPage() {
     <div className="flex-1 p-6 md:p-8 overflow-auto">
       <div className="max-w-4xl mx-auto">
         {/* Contact Details Hero */}
-        <ContactDetailsCard contactDetails={data.contactDetails} />
+        <ContactDetailsCard
+          contactDetails={data.contactDetails}
+          onSave={handleSaveContactDetails}
+        />
 
         {/* Professional Summary */}
         <ProfessionalSummaryCard
@@ -252,42 +454,69 @@ export default function LibraryPage() {
         {/* Main Content Grid */}
         <div className="space-y-12">
           {/* Skills Section */}
-          {data.skills.length > 0 && (
-            <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 delay-100">
-              <SectionHeader title="Skills" count={data.skills.length} />
-              <SkillsList skills={data.skills} />
-            </section>
-          )}
+          <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 delay-100">
+            <SectionHeader title="Skills" count={data.skills.length} />
+            <SkillsList
+              skills={data.skills}
+              onAdd={handleAddSkill}
+              onUpdate={handleUpdateSkill}
+              onDelete={handleDeleteSkill}
+            />
+          </section>
 
           {/* Education Section */}
-          {data.education.length > 0 && (
-            <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 delay-200">
-              <SectionHeader title="Education" count={data.education.length} />
-              <EducationList education={data.education} />
-            </section>
-          )}
+          <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 delay-200">
+            <SectionHeader title="Education" count={data.education.length} />
+            <EducationList
+              education={data.education}
+              onAdd={handleAddEducation}
+              onUpdate={handleUpdateEducation}
+              onDelete={handleDeleteEducation}
+            />
+          </section>
 
           {/* Work Experience Section */}
-          {data.roles.length > 0 && (
-            <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
-              <SectionHeader
-                title="Experience"
-                count={data.roles.reduce((sum, role) => sum + role.achievements.length, 0)}
-              />
+          <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
+            <SectionHeader
+              title="Experience"
+              count={data.roles.reduce((sum, role) => sum + role.achievements.length, 0)}
+              onAdd={() => setAddingRole(true)}
+              addLabel="Add Role"
+            />
 
-              <div className="space-y-4">
-                {data.roles.map((role, roleIndex) => (
-                  <div
-                    key={role.id}
-                    className="animate-in fade-in slide-in-from-bottom-1 duration-500"
-                    style={{ animationDelay: `${400 + roleIndex * 100}ms` }}
-                  >
-                    <RoleCard role={role} />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+            {/* Add Role Form */}
+            {addingRole && (
+              <RoleFormInline
+                onSave={handleAddRole}
+                onCancel={() => setAddingRole(false)}
+              />
+            )}
+
+            <div className="space-y-4">
+              {data.roles.map((role, roleIndex) => (
+                <div
+                  key={role.id}
+                  className="animate-in fade-in slide-in-from-bottom-1 duration-500"
+                  style={{ animationDelay: `${400 + roleIndex * 100}ms` }}
+                >
+                  <RoleCard
+                    role={role}
+                    onUpdateRole={handleUpdateRole}
+                    onDeleteRole={handleDeleteRole}
+                    onAddAchievement={handleAddAchievement}
+                    onUpdateAchievement={handleUpdateAchievement}
+                    onDeleteAchievement={handleDeleteAchievement}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {data.roles.length === 0 && !addingRole && (
+              <p className="text-sm text-muted-foreground italic">
+                No work experience in your library yet.
+              </p>
+            )}
+          </section>
 
           {/* Dynamic Sections (Projects, Publications, Certifications, etc.) */}
           {Object.entries(groupedLibraryItems).map(([type, items], typeIndex) => (
@@ -297,7 +526,13 @@ export default function LibraryPage() {
               style={{ animationDelay: `${400 + typeIndex * 100}ms` }}
             >
               <SectionHeader title={getTypeLabel(type)} count={items.length} />
-              <LibraryItemsList items={items} type={type} />
+              <LibraryItemsList
+                items={items}
+                type={type}
+                onAdd={(itemData) => handleAddLibraryItem({ ...itemData, type })}
+                onUpdate={handleUpdateLibraryItem}
+                onDelete={handleDeleteLibraryItem}
+              />
             </section>
           ))}
         </div>
