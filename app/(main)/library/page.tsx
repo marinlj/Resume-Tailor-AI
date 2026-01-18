@@ -5,6 +5,7 @@ import { AchievementCard } from '@/components/library/AchievementCard';
 import { ContactDetailsCard } from '@/components/library/ContactDetailsCard';
 import { SkillsList } from '@/components/library/SkillsList';
 import { EducationList } from '@/components/library/EducationList';
+import { LibraryItemsList, getTypeLabel } from '@/components/library/LibraryItemsList';
 import { cn } from '@/lib/utils';
 
 interface Achievement {
@@ -50,11 +51,24 @@ interface ContactDetails {
   headline: string | null;
 }
 
+interface LibraryItem {
+  id: string;
+  type: string;
+  title: string;
+  subtitle: string | null;
+  date: string | null;
+  location: string | null;
+  bullets: string[];
+  tags: string[];
+  url: string | null;
+}
+
 interface LibraryData {
   contactDetails: ContactDetails | null;
   achievements: Achievement[];
   skills: Skill[];
   education: Education[];
+  libraryItems: LibraryItem[];
 }
 
 function SectionHeader({
@@ -113,6 +127,7 @@ export default function LibraryPage() {
     achievements: [],
     skills: [],
     education: [],
+    libraryItems: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +147,7 @@ export default function LibraryPage() {
           achievementsCount: result.achievements?.length ?? 0,
           skillsCount: result.skills?.length ?? 0,
           educationCount: result.education?.length ?? 0,
+          libraryItemsCount: result.libraryItems?.length ?? 0,
           error: result.error,
         });
 
@@ -146,6 +162,7 @@ export default function LibraryPage() {
           achievements: result.achievements || [],
           skills: result.skills || [],
           education: result.education || [],
+          libraryItems: result.libraryItems || [],
         });
         setLoading(false);
       })
@@ -178,7 +195,8 @@ export default function LibraryPage() {
     !data.contactDetails &&
     data.achievements.length === 0 &&
     data.skills.length === 0 &&
-    data.education.length === 0;
+    data.education.length === 0 &&
+    data.libraryItems.length === 0;
 
   if (isEmpty) {
     return (
@@ -219,6 +237,15 @@ export default function LibraryPage() {
   >((acc, ach) => {
     if (!acc[ach.company]) acc[ach.company] = [];
     acc[ach.company].push(ach);
+    return acc;
+  }, {});
+
+  // Group library items by type
+  const groupedLibraryItems = data.libraryItems.reduce<
+    Record<string, LibraryItem[]>
+  >((acc, item) => {
+    if (!acc[item.type]) acc[item.type] = [];
+    acc[item.type].push(item);
     return acc;
   }, {});
 
@@ -287,6 +314,18 @@ export default function LibraryPage() {
               </div>
             </section>
           )}
+
+          {/* Dynamic Sections (Projects, Publications, Certifications, etc.) */}
+          {Object.entries(groupedLibraryItems).map(([type, items], typeIndex) => (
+            <section
+              key={type}
+              className="animate-in fade-in slide-in-from-bottom-2 duration-700"
+              style={{ animationDelay: `${400 + typeIndex * 100}ms` }}
+            >
+              <SectionHeader title={getTypeLabel(type)} count={items.length} />
+              <LibraryItemsList items={items} type={type} />
+            </section>
+          ))}
         </div>
       </div>
     </div>
