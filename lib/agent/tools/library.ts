@@ -29,7 +29,7 @@ export const getLibraryStatus = tool({
         count: achievementCount,
         lastUpdated: latestRole?.updatedAt.toISOString() ?? null,
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Failed to check library status' };
     }
   },
@@ -100,7 +100,7 @@ export const getAchievements = tool({
           },
         })),
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Failed to fetch achievements' };
     }
   },
@@ -148,7 +148,7 @@ export const addAchievement = tool({
           title: achievement.role.title,
         },
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Failed to add achievement' };
     }
   },
@@ -336,7 +336,10 @@ export const updateAchievement = tool({
       }
 
       const achievement = await prisma.achievement.update({
-        where: { id },
+        where: {
+          id,
+          role: { userId },
+        },
         data: {
           ...(updates.text && { text: updates.text }),
           ...(updates.tags && { tags: updates.tags }),
@@ -363,7 +366,7 @@ export const updateAchievement = tool({
           title: achievement.role.title,
         },
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Achievement not found or update failed' };
     }
   },
@@ -394,7 +397,7 @@ export const deleteAchievement = tool({
       });
 
       return { success: true, deleted: true, id };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Achievement not found or already deleted' };
     }
   },
@@ -433,7 +436,7 @@ export const getRoles = tool({
           })),
         })),
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Failed to fetch roles' };
     }
   },
@@ -473,7 +476,7 @@ export const addRole = tool({
         endDate: role.endDate?.toISOString().slice(0, 7) ?? null,
         summary: role.summary,
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Failed to add role' };
     }
   },
@@ -518,7 +521,7 @@ export const updateRole = tool({
           tags: a.tags,
         })),
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Role not found or update failed' };
     }
   },
@@ -536,7 +539,7 @@ export const deleteRole = tool({
         where: { id, userId },
       });
       return { success: true, deleted: true, id };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Role not found or already deleted' };
     }
   },
@@ -573,7 +576,7 @@ export const getSkills = tool({
           level: s.level,
         })),
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Failed to fetch skills' };
     }
   },
@@ -657,7 +660,7 @@ export const updateSkill = tool({
         category: skill.category,
         level: skill.level,
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Skill not found or update failed' };
     }
   },
@@ -676,7 +679,7 @@ export const deleteSkill = tool({
       });
 
       return { success: true, deleted: true, id };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Skill not found or already deleted' };
     }
   },
@@ -712,7 +715,7 @@ export const getEducation = tool({
           activities: e.activities,
         })),
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Failed to fetch education' };
     }
   },
@@ -804,7 +807,7 @@ export const updateEducation = tool({
         honors: education.honors,
         activities: education.activities,
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Education entry not found or update failed' };
     }
   },
@@ -823,7 +826,7 @@ export const deleteEducation = tool({
       });
 
       return { success: true, deleted: true, id };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Education entry not found or already deleted' };
     }
   },
@@ -865,7 +868,7 @@ export const getContactDetails = tool({
           headline: contactDetails.headline,
         },
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Failed to fetch contact details' };
     }
   },
@@ -1089,7 +1092,7 @@ export const getLibraryItems = tool({
           url: item.url,
         })),
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Failed to fetch library items' };
     }
   },
@@ -1185,7 +1188,7 @@ export const updateLibraryItem = tool({
         tags: item.tags,
         url: item.url,
       };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Library item not found or update failed' };
     }
   },
@@ -1204,7 +1207,7 @@ export const deleteLibraryItem = tool({
       });
 
       return { success: true, deleted: true, id };
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Library item not found or already deleted' };
     }
   },
