@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 const prisma = new PrismaClient();
 
@@ -99,56 +100,120 @@ async function migrateAchievementsToRoles(): Promise<void> {
 
   for (const [, roleData] of roleMap) {
     try {
-      // Check if role already exists (idempotent)
-      const existingRole = await prisma.$queryRaw<Array<{ id: string }>>`
-        SELECT id FROM "Role"
-        WHERE "userId" = ${roleData.userId}
-          AND company = ${roleData.company}
-          AND title = ${roleData.title}
-          AND ("startDate" = ${roleData.startDate} OR ("startDate" IS NULL AND ${roleData.startDate} IS NULL))
-        LIMIT 1
-      `;
+      // Check if role already exists (idempotent) using Prisma's findFirst
+      // This handles NULL startDate correctly
+      const existingRole = await prisma.role.findFirst({
+        where: {
+          userId: roleData.userId,
+          company: roleData.company,
+          title: roleData.title,
+          startDate: roleData.startDate, // Prisma handles NULL correctly
+        },
+      });
 
       let roleId: string;
-
-      if (existingRole.length > 0) {
-        roleId = existingRole[0].id;
-        console.log(`  Role already exists: ${roleData.company} - ${roleData.title} (id: ${roleId})`);
-      } else {
-        // Create the role
-        const newRole = await prisma.role.create({
-          data: {
-            userId: roleData.userId,
-            company: roleData.company,
-            title: roleData.title,
-            location: roleData.location,
-            startDate: roleData.startDate,
-            endDate: roleData.endDate,
-          },
-        });
-        roleId = newRole.id;
-        createdCount++;
-        console.log(`  Created role: ${roleData.company} - ${roleData.title} (id: ${roleId})`);
-      }
-
-      // Update achievements with roleId using raw SQL
       const achievementIds = roleData.achievements.map((a) => a.id);
 
-      // Check if roleId column exists before trying to update
-      try {
-        await prisma.$executeRaw`
-          UPDATE "Achievement"
-          SET "roleId" = ${roleId}
-          WHERE id = ANY(${achievementIds})
-        `;
-        updatedAchievements += achievementIds.length;
-        console.log(`    Linked ${achievementIds.length} achievements`);
-      } catch (error) {
-        // roleId column might not exist yet - this is expected in certain migration states
-        if (error instanceof Error && error.message.includes('roleId')) {
-          console.log(`    Note: roleId column not yet added - achievements will be linked after schema migration`);
-        } else {
-          throw error;
+      if (existingRole) {
+        roleId = existingRole.id;
+        console.log(`  Role already exists: ${roleData.company} - ${roleData.title} (id: ${roleId})`);
+
+        // Update achievements with roleId using Prisma's type-safe updateMany
+        try {
+          await prisma.achievement.updateMany({
+            where: { id: { in: achievementIds } },
+            data: { roleId },
+          });
+          updatedAchievements += achievementIds.length;
+          console.log(`    Linked ${achievementIds.length} achievements`);
+        } catch (error) {
+          // roleId column might not exist yet - this is expected in certain migration states
+          if (error instanceof Error && error.message.includes('roleId')) {
+            console.log(`    Note: roleId column not yet added - achievements will be linked after schema migration`);
+          } else {
+            throw error;
+          }
+        }
+      } else {
+        // Wrap role creation and achievement update in a transaction
+        try {
+          const result = await prisma.$transaction(async (tx) => {
+            // Create the role
+            const newRole = await tx.role.create({
+              data: {
+                userId: roleData.userId,
+                company: roleData.company,
+                title: roleData.title,
+                location: roleData.location,
+                startDate: roleData.startDate,
+                endDate: roleData.endDate,
+              },
+            });
+
+            // Update achievements with roleId using Prisma's type-safe updateMany
+            let linkedCount = 0;
+            try {
+              await tx.achievement.updateMany({
+                where: { id: { in: achievementIds } },
+                data: { roleId: newRole.id },
+              });
+              linkedCount = achievementIds.length;
+            } catch (error) {
+              // roleId column might not exist yet - this is expected in certain migration states
+              if (error instanceof Error && error.message.includes('roleId')) {
+                console.log(`    Note: roleId column not yet added - achievements will be linked after schema migration`);
+              } else {
+                throw error;
+              }
+            }
+
+            return { roleId: newRole.id, linkedCount };
+          });
+
+          roleId = result.roleId;
+          createdCount++;
+          updatedAchievements += result.linkedCount;
+          console.log(`  Created role: ${roleData.company} - ${roleData.title} (id: ${roleId})`);
+          if (result.linkedCount > 0) {
+            console.log(`    Linked ${result.linkedCount} achievements`);
+          }
+        } catch (error) {
+          // Handle unique constraint violation (concurrent creation)
+          if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
+            // Unique constraint violation - find the existing role
+            const found = await prisma.role.findFirst({
+              where: {
+                userId: roleData.userId,
+                company: roleData.company,
+                title: roleData.title,
+                startDate: roleData.startDate,
+              },
+            });
+            if (found) {
+              roleId = found.id;
+              console.log(`  -> Using existing role (concurrent creation): ${roleData.company} - ${roleData.title}`);
+
+              // Update achievements with roleId
+              try {
+                await prisma.achievement.updateMany({
+                  where: { id: { in: achievementIds } },
+                  data: { roleId },
+                });
+                updatedAchievements += achievementIds.length;
+                console.log(`    Linked ${achievementIds.length} achievements`);
+              } catch (updateError) {
+                if (updateError instanceof Error && updateError.message.includes('roleId')) {
+                  console.log(`    Note: roleId column not yet added - achievements will be linked after schema migration`);
+                } else {
+                  throw updateError;
+                }
+              }
+            } else {
+              throw error;
+            }
+          } else {
+            throw error;
+          }
         }
       }
     } catch (error) {
