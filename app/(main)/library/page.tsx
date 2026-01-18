@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ContactDetailsCard } from '@/components/library/ContactDetailsCard';
+import { ProfessionalSummaryCard } from '@/components/library/ProfessionalSummaryCard';
 import { SkillsList } from '@/components/library/SkillsList';
 import { EducationList } from '@/components/library/EducationList';
 import { LibraryItemsList, getTypeLabel } from '@/components/library/LibraryItemsList';
@@ -75,6 +76,7 @@ interface LibraryData {
   skills: Skill[];
   education: Education[];
   libraryItems: LibraryItem[];
+  professionalSummary: string | null;
 }
 
 function SectionHeader({
@@ -134,6 +136,7 @@ export default function LibraryPage() {
     skills: [],
     education: [],
     libraryItems: [],
+    professionalSummary: null,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -154,6 +157,7 @@ export default function LibraryPage() {
           skillsCount: result.skills?.length ?? 0,
           educationCount: result.education?.length ?? 0,
           libraryItemsCount: result.libraryItems?.length ?? 0,
+          hasProfessionalSummary: !!result.professionalSummary,
           error: result.error,
         });
 
@@ -169,6 +173,7 @@ export default function LibraryPage() {
           skills: result.skills || [],
           education: result.education || [],
           libraryItems: result.libraryItems || [],
+          professionalSummary: result.professionalSummary || null,
         });
         setLoading(false);
       })
@@ -246,11 +251,27 @@ export default function LibraryPage() {
     return acc;
   }, {});
 
+  const handleSaveSummary = async (summary: string) => {
+    const res = await fetch('/api/professional-summary', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ summary }),
+    });
+    if (!res.ok) throw new Error('Failed to save');
+    setData((prev) => ({ ...prev, professionalSummary: summary }));
+  };
+
   return (
     <div className="flex-1 p-6 md:p-8 overflow-auto">
       <div className="max-w-4xl mx-auto">
         {/* Contact Details Hero */}
         <ContactDetailsCard contactDetails={data.contactDetails} />
+
+        {/* Professional Summary */}
+        <ProfessionalSummaryCard
+          summary={data.professionalSummary}
+          onSave={handleSaveSummary}
+        />
 
         {/* Main Content Grid */}
         <div className="space-y-12">

@@ -16,7 +16,7 @@ export async function GET() {
     const userId = session.user.id;
     console.log('[api/library] Querying library for userId:', userId);
 
-    const [contactDetails, roles, skills, education, libraryItems] = await Promise.all([
+    const [contactDetails, roles, skills, education, libraryItems, user] = await Promise.all([
       prisma.contactDetails.findUnique({
         where: { userId },
       }),
@@ -37,6 +37,10 @@ export async function GET() {
         where: { userId },
         orderBy: [{ type: 'asc' }, { createdAt: 'desc' }],
       }),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { professionalSummary: true },
+      }),
     ]);
 
     console.log('[api/library] Results:', {
@@ -46,9 +50,17 @@ export async function GET() {
       skillsCount: skills.length,
       educationCount: education.length,
       libraryItemsCount: libraryItems.length,
+      hasProfessionalSummary: !!user?.professionalSummary,
     });
 
-    return NextResponse.json({ contactDetails, roles, skills, education, libraryItems });
+    return NextResponse.json({
+      contactDetails,
+      roles,
+      skills,
+      education,
+      libraryItems,
+      professionalSummary: user?.professionalSummary || null,
+    });
   } catch (error) {
     console.error('[api/library] Error:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
