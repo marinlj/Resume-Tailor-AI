@@ -20,6 +20,7 @@ export function ChatContainer({ conversationId, initialMessages }: ChatContainer
 
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
   const isCreatingConversation = useRef(false);
+  const initialMessageCount = useRef(initialMessages?.length ?? 0);
 
   // IMPORTANT: Keep transport stable across re-renders to prevent state loss
   const transport = useMemo(
@@ -160,10 +161,13 @@ export function ChatContainer({ conversationId, initialMessages }: ChatContainer
   };
 
   // Save messages after each exchange (debounced to avoid rapid API calls)
+  // Only save when there are NEW messages beyond what was initially loaded
   useEffect(() => {
     if (!currentConversationId) return;
     if (messages.length === 0) return;
     if (status === 'streaming' || status === 'submitted') return;
+    // Don't save if we haven't added any new messages
+    if (messages.length <= initialMessageCount.current) return;
 
     const timeoutId = setTimeout(() => {
       saveMessages(currentConversationId, messages);
