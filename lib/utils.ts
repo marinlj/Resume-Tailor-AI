@@ -11,6 +11,7 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function generateTitle(message: string): string {
   const cleaned = message.trim().replace(/\s+/g, ' ');
+  if (!cleaned) return 'New conversation';
   if (cleaned.length <= 50) return cleaned;
 
   const truncated = cleaned.slice(0, 50);

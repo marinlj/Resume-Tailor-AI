@@ -17,6 +17,7 @@ interface ChatContainerProps {
 export function ChatContainer({ conversationId, initialMessages }: ChatContainerProps) {
   const [input, setInput] = useState('');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const router = useRouter();
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
@@ -41,13 +42,17 @@ export function ChatContainer({ conversationId, initialMessages }: ChatContainer
 
   const saveMessages = useCallback(async (convId: string, msgs: UIMessage[]) => {
     try {
-      await fetch(`/api/conversations/${convId}`, {
+      const response = await fetch(`/api/conversations/${convId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: msgs }),
       });
-    } catch (error) {
-      console.error('Failed to save messages:', error);
+      if (!response.ok) {
+        throw new Error('Failed to save messages');
+      }
+    } catch (err) {
+      console.error('Failed to save messages:', err);
+      setError('Failed to save messages. Your conversation may not be preserved.');
     }
   }, []);
 
@@ -67,8 +72,9 @@ export function ChatContainer({ conversationId, initialMessages }: ChatContainer
 
       const data = await response.json();
       return data.conversation.id;
-    } catch (error) {
-      console.error('Failed to create conversation:', error);
+    } catch (err) {
+      console.error('Failed to create conversation:', err);
+      setError('Failed to create conversation. Please try again.');
       return null;
     }
   }, []);
@@ -131,13 +137,16 @@ export function ChatContainer({ conversationId, initialMessages }: ChatContainer
     if (!currentConversationId && !isCreatingConversation.current) {
       isCreatingConversation.current = true;
       const newId = await createConversation(messageText);
-
-      if (newId) {
-        setCurrentConversationId(newId);
-        // Redirect to the new conversation URL
-        router.push(`/chat/${newId}`);
-      }
       isCreatingConversation.current = false;
+
+      if (!newId) {
+        // Don't send message if conversation creation failed
+        return;
+      }
+
+      setCurrentConversationId(newId);
+      // Redirect to the new conversation URL
+      router.push(`/chat/${newId}`);
     }
 
     sendMessage({ text: messageText });
@@ -145,18 +154,33 @@ export function ChatContainer({ conversationId, initialMessages }: ChatContainer
     setAttachedFile(null);
   };
 
-  // Save messages after each exchange
+  // Save messages after each exchange (debounced to avoid rapid API calls)
   useEffect(() => {
     if (!currentConversationId) return;
     if (messages.length === 0) return;
     if (status === 'streaming' || status === 'submitted') return;
 
-    // Only save when we have messages and status is ready/error
-    saveMessages(currentConversationId, messages);
+    const timeoutId = setTimeout(() => {
+      saveMessages(currentConversationId, messages);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
   }, [currentConversationId, messages, status, saveMessages]);
 
   return (
     <div className="flex h-full flex-col">
+      {error && (
+        <div className="mx-4 mt-2 flex items-center justify-between rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="ml-2 hover:opacity-70"
+            aria-label="Dismiss error"
+          >
+            &times;
+          </button>
+        </div>
+      )}
       <MessageList messages={messages} status={status} />
       <ChatInput
         input={input}
