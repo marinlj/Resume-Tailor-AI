@@ -3,7 +3,6 @@
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import type { UIMessage } from 'ai';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
@@ -19,7 +18,6 @@ export function ChatContainer({ conversationId, initialMessages }: ChatContainer
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const router = useRouter();
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
   const isCreatingConversation = useRef(false);
 
@@ -30,7 +28,11 @@ export function ChatContainer({ conversationId, initialMessages }: ChatContainer
   );
 
   // IMPORTANT: useChat requires a stable ID for proper state management
-  const chatId = useMemo(() => conversationId || 'default-chat', [conversationId]);
+  // Use currentConversationId (which includes newly created conversations) to keep chat state consistent
+  const chatId = useMemo(
+    () => currentConversationId || 'default-chat',
+    [currentConversationId]
+  );
 
   const { messages, sendMessage, status } = useChat({
     id: chatId,
@@ -145,8 +147,9 @@ export function ChatContainer({ conversationId, initialMessages }: ChatContainer
       }
 
       setCurrentConversationId(newId);
-      // Redirect to the new conversation URL
-      router.push(`/chat/${newId}`);
+      // Update URL without full navigation to keep component mounted
+      // This allows sendMessage to complete before any navigation
+      window.history.replaceState(null, '', `/chat/${newId}`);
     }
 
     sendMessage({ text: messageText });
