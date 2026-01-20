@@ -2,10 +2,12 @@
 
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import type { UIMessage } from 'ai';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
+import { generateTitle } from '@/lib/utils';
 
 interface ChatContainerProps {
   conversationId?: string;
@@ -15,6 +17,10 @@ interface ChatContainerProps {
 export function ChatContainer({ conversationId, initialMessages }: ChatContainerProps) {
   const [input, setInput] = useState('');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
+
+  const router = useRouter();
+  const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
+  const isCreatingConversation = useRef(false);
 
   // IMPORTANT: Keep transport stable across re-renders to prevent state loss
   const transport = useMemo(
@@ -32,6 +38,40 @@ export function ChatContainer({ conversationId, initialMessages }: ChatContainer
   });
 
   const [isExtracting, setIsExtracting] = useState(false);
+
+  const saveMessages = useCallback(async (convId: string, msgs: UIMessage[]) => {
+    try {
+      await fetch(`/api/conversations/${convId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: msgs }),
+      });
+    } catch (error) {
+      console.error('Failed to save messages:', error);
+    }
+  }, []);
+
+  const createConversation = useCallback(async (firstMessage: string): Promise<string | null> => {
+    try {
+      const title = generateTitle(firstMessage);
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          messages: [{ role: 'user', content: firstMessage }],
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create conversation');
+
+      const data = await response.json();
+      return data.conversation.id;
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+      return null;
+    }
+  }, []);
 
   // Helper to check if file needs server-side text extraction
   const needsExtraction = (file: File) => {
@@ -71,10 +111,8 @@ export function ChatContainer({ conversationId, initialMessages }: ChatContainer
         let fileContent: string;
 
         if (needsExtraction(attachedFile)) {
-          // Use API for PDF/DOCX files
           fileContent = await extractTextFromFile(attachedFile);
         } else {
-          // Use direct text reading for txt/md files
           fileContent = await attachedFile.text();
         }
 
@@ -89,10 +127,33 @@ export function ChatContainer({ conversationId, initialMessages }: ChatContainer
       }
     }
 
+    // If no conversation exists, create one first
+    if (!currentConversationId && !isCreatingConversation.current) {
+      isCreatingConversation.current = true;
+      const newId = await createConversation(messageText);
+
+      if (newId) {
+        setCurrentConversationId(newId);
+        // Redirect to the new conversation URL
+        router.push(`/chat/${newId}`);
+      }
+      isCreatingConversation.current = false;
+    }
+
     sendMessage({ text: messageText });
     setInput('');
     setAttachedFile(null);
   };
+
+  // Save messages after each exchange
+  useEffect(() => {
+    if (!currentConversationId) return;
+    if (messages.length === 0) return;
+    if (status === 'streaming' || status === 'submitted') return;
+
+    // Only save when we have messages and status is ready/error
+    saveMessages(currentConversationId, messages);
+  }, [currentConversationId, messages, status, saveMessages]);
 
   return (
     <div className="flex h-full flex-col">
