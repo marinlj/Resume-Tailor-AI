@@ -34,17 +34,21 @@ export function ConversationList() {
     conversation: null,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/conversations')
       .then((res) => res.json())
-      .then((data) => setConversations(data.conversations || []));
+      .then((data) => setConversations(data.conversations || []))
+      .catch((err) => console.error('Failed to fetch conversations:', err));
   }, [pathname]);
 
   const handleRename = async (newTitle: string) => {
     if (!renameDialog.conversation) return;
 
     setIsLoading(true);
+    setRenameError(null);
     try {
       const response = await fetch(`/api/conversations/${renameDialog.conversation.id}`, {
         method: 'PUT',
@@ -52,16 +56,20 @@ export function ConversationList() {
         body: JSON.stringify({ title: newTitle }),
       });
 
-      if (response.ok) {
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === renameDialog.conversation!.id ? { ...c, title: newTitle } : c
-          )
-        );
-        setRenameDialog({ open: false, conversation: null });
+      if (!response.ok) {
+        setRenameError('Failed to rename conversation. Please try again.');
+        return;
       }
-    } catch (error) {
-      console.error('Failed to rename conversation:', error);
+
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === renameDialog.conversation!.id ? { ...c, title: newTitle } : c
+        )
+      );
+      setRenameDialog({ open: false, conversation: null });
+    } catch (err) {
+      console.error('Failed to rename conversation:', err);
+      setRenameError('Failed to rename conversation. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -71,22 +79,28 @@ export function ConversationList() {
     if (!deleteDialog.conversation) return;
 
     setIsLoading(true);
+    setDeleteError(null);
     try {
       const response = await fetch(`/api/conversations/${deleteDialog.conversation.id}`, {
         method: 'DELETE',
       });
 
-      if (response.ok) {
-        setConversations((prev) => prev.filter((c) => c.id !== deleteDialog.conversation!.id));
-        setDeleteDialog({ open: false, conversation: null });
-
-        // If we deleted the current conversation, redirect to home
-        if (pathname === `/chat/${deleteDialog.conversation.id}`) {
-          router.push('/');
-        }
+      if (!response.ok) {
+        setDeleteError('Failed to delete conversation. Please try again.');
+        return;
       }
-    } catch (error) {
-      console.error('Failed to delete conversation:', error);
+
+      const deletedId = deleteDialog.conversation.id;
+      setConversations((prev) => prev.filter((c) => c.id !== deletedId));
+      setDeleteDialog({ open: false, conversation: null });
+
+      // If we deleted the current conversation, redirect to home
+      if (pathname === `/chat/${deletedId}`) {
+        router.push('/');
+      }
+    } catch (err) {
+      console.error('Failed to delete conversation:', err);
+      setDeleteError('Failed to delete conversation. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -177,19 +191,27 @@ export function ConversationList() {
 
       <RenameDialog
         open={renameDialog.open}
-        onOpenChange={(open) => setRenameDialog({ open, conversation: open ? renameDialog.conversation : null })}
+        onOpenChange={(open) => {
+          setRenameDialog({ open, conversation: open ? renameDialog.conversation : null });
+          if (!open) setRenameError(null);
+        }}
         currentTitle={renameDialog.conversation?.title || ''}
         onRename={handleRename}
         loading={isLoading}
+        error={renameError}
       />
 
       <DeleteConfirmDialog
         open={deleteDialog.open}
-        onOpenChange={(open) => setDeleteDialog({ open, conversation: open ? deleteDialog.conversation : null })}
+        onOpenChange={(open) => {
+          setDeleteDialog({ open, conversation: open ? deleteDialog.conversation : null });
+          if (!open) setDeleteError(null);
+        }}
         title="Delete conversation"
         description="Are you sure you want to delete this conversation? This action cannot be undone."
         onConfirm={handleDelete}
         loading={isLoading}
+        error={deleteError}
       />
     </>
   );

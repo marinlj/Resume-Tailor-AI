@@ -18,6 +18,7 @@ interface DeleteConfirmDialogProps {
   description: string;
   onConfirm: () => void;
   loading?: boolean;
+  error?: string | null;
 }
 
 export function DeleteConfirmDialog({
@@ -27,6 +28,7 @@ export function DeleteConfirmDialog({
   description,
   onConfirm,
   loading = false,
+  error,
 }: DeleteConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -35,6 +37,9 @@ export function DeleteConfirmDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {error && (
+          <p className="text-sm text-destructive">{error}</p>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
           <AlertDialogAction

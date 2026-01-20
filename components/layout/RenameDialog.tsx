@@ -16,10 +16,11 @@ interface RenameFormProps {
   onRename: (newTitle: string) => void;
   onCancel: () => void;
   loading: boolean;
+  error?: string | null;
 }
 
 // Separate form component that resets when remounted
-function RenameForm({ currentTitle, onRename, onCancel, loading }: RenameFormProps) {
+function RenameForm({ currentTitle, onRename, onCancel, loading, error }: RenameFormProps) {
   const [title, setTitle] = useState(currentTitle);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -38,6 +39,9 @@ function RenameForm({ currentTitle, onRename, onCancel, loading }: RenameFormPro
         autoFocus
         disabled={loading}
       />
+      {error && (
+        <p className="mt-2 text-sm text-destructive">{error}</p>
+      )}
       <DialogFooter className="mt-4">
         <Button
           type="button"
@@ -61,6 +65,7 @@ interface RenameDialogProps {
   currentTitle: string;
   onRename: (newTitle: string) => void;
   loading?: boolean;
+  error?: string | null;
 }
 
 export function RenameDialog({
@@ -69,6 +74,7 @@ export function RenameDialog({
   currentTitle,
   onRename,
   loading = false,
+  error,
 }: RenameDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,6 +88,7 @@ export function RenameDialog({
             onRename={onRename}
             onCancel={() => onOpenChange(false)}
             loading={loading}
+            error={error}
           />
         )}
       </DialogContent>
