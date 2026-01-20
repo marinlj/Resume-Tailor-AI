@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,50 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
+interface RenameFormProps {
+  currentTitle: string;
+  onRename: (newTitle: string) => void;
+  onCancel: () => void;
+  loading: boolean;
+}
+
+// Separate form component that resets when remounted
+function RenameForm({ currentTitle, onRename, onCancel, loading }: RenameFormProps) {
+  const [title, setTitle] = useState(currentTitle);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (title.trim()) {
+      onRename(title.trim());
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <Input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Chat title"
+        autoFocus
+        disabled={loading}
+      />
+      <DialogFooter className="mt-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={loading || !title.trim()}>
+          {loading ? 'Saving...' : 'Save'}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
 
 interface RenameDialogProps {
   open: boolean;
@@ -26,50 +70,20 @@ export function RenameDialog({
   onRename,
   loading = false,
 }: RenameDialogProps) {
-  const [title, setTitle] = useState(currentTitle);
-
-  // Reset title when dialog opens with new currentTitle
-  useEffect(() => {
-    if (open) {
-      setTitle(currentTitle);
-    }
-  }, [open, currentTitle]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (title.trim()) {
-      onRename(title.trim());
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Rename chat</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Chat title"
-            autoFocus
-            disabled={loading}
+        {open && (
+          <RenameForm
+            currentTitle={currentTitle}
+            onRename={onRename}
+            onCancel={() => onOpenChange(false)}
+            loading={loading}
           />
-          <DialogFooter className="mt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading || !title.trim()}>
-              {loading ? 'Saving...' : 'Save'}
-            </Button>
-          </DialogFooter>
-        </form>
+        )}
       </DialogContent>
     </Dialog>
   );
