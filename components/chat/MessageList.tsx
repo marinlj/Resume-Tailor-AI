@@ -66,7 +66,7 @@ export function MessageList({ messages, status }: MessageListProps) {
               {message.role === 'user' ? 'You' : 'Assistant'}
             </div>
             <div>
-              {message.parts.map((part, i) => {
+              {message.parts?.map((part, i) => {
                 if (part.type === 'text') {
                   return message.role === 'assistant' ? (
                     <MarkdownContent key={i} content={part.text} />
@@ -103,7 +103,16 @@ export function MessageList({ messages, status }: MessageListProps) {
                   );
                 }
                 return null;
-              })}
+              }) ?? (
+                // Fallback for messages without parts (e.g., from database)
+                'content' in message && typeof message.content === 'string' ? (
+                  message.role === 'assistant' ? (
+                    <MarkdownContent content={message.content} />
+                  ) : (
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  )
+                ) : null
+              )}
             </div>
           </div>
         ))}
