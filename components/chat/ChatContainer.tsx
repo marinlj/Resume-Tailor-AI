@@ -27,11 +27,13 @@ export function ChatContainer({ conversationId, initialMessages }: ChatContainer
     []
   );
 
-  // IMPORTANT: useChat requires a stable ID for proper state management
-  // Use currentConversationId (which includes newly created conversations) to keep chat state consistent
+  // IMPORTANT: chatId must be stable for the lifetime of this component instance
+  // Using the PROP (not state) ensures the hook doesn't reinitialize mid-conversation
+  // When conversationId prop is undefined (new chat), we use 'new-chat'
+  // When conversationId prop is set (existing chat), we use that ID
   const chatId = useMemo(
-    () => currentConversationId || 'default-chat',
-    [currentConversationId]
+    () => conversationId || 'new-chat',
+    [conversationId]
   );
 
   const { messages, sendMessage, status } = useChat({
