@@ -338,6 +338,7 @@ export type ResumeSection = z.infer<typeof resumeSectionSchema>;
 export const resumeStructureInputSchema = z.object({
   contactFields: z.array(z.string()).describe('Contact fields to include: "name", "email", "phone", "location", "linkedin", "portfolio", "github"'),
   sections: z.array(resumeSectionSchema).describe('Ordered list of sections to include'),
+  includeRoleSummaries: z.boolean().optional().describe('Whether to include 1-2 sentence summaries at the start of each role'),
 });
 
 export type ResumeStructureInput = z.infer<typeof resumeStructureInputSchema>;

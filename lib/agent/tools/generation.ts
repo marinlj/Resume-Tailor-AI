@@ -258,6 +258,18 @@ export const generateResume = tool({
       }
     }
 
+    // Ensure user exists in database (required for foreign key constraint)
+    try {
+      await prisma.user.upsert({
+        where: { id: userId },
+        update: {},
+        create: { id: userId, email: `${userId}@temp.local` },
+      });
+    } catch (userError) {
+      console.error('[generateResume] Failed to ensure user exists:', userError);
+      // Continue anyway - the user might exist with a different mechanism
+    }
+
     // Save to database
     try {
       const resume = await prisma.generatedResume.create({
@@ -276,9 +288,11 @@ export const generateResume = tool({
         message: `Resume generated for ${targetRole} at ${targetCompany}. Use generateDocxFile to create a downloadable Word document.`,
       };
     } catch (error) {
+      // Log full error for debugging but don't expose database internals to user
+      console.error('[generateResume] Database error:', error);
       return {
         success: false,
-        error: 'Failed to save resume to database',
+        error: 'Failed to save resume. Please try again or contact support if the issue persists.',
       };
     }
   },
@@ -298,9 +312,11 @@ export const generateDocxFile = tool({
         where: { id: resumeId, userId },
       });
     } catch (error) {
+      // Log full error for debugging but don't expose database internals to user
+      console.error('[generateDocxFile] Database fetch error:', error);
       return {
         success: false,
-        error: 'Failed to fetch resume from database',
+        error: 'Failed to fetch resume. Please try again.',
       };
     }
 
@@ -342,9 +358,11 @@ export const generateDocxFile = tool({
         message: `DOCX file generated: ${filename}`,
       };
     } catch (error) {
+      // Log full error for debugging but don't expose internal details to user
+      console.error('[generateDocxFile] Error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to generate DOCX file',
+        error: 'Failed to generate DOCX file. Please try again.',
       };
     }
   },

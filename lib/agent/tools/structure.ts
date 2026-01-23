@@ -27,6 +27,7 @@ export const getResumeStructure = tool({
         structure: {
           contactFields: structure.contactFields,
           sections: structure.sections as ResumeSection[],
+          includeRoleSummaries: structure.includeRoleSummaries,
         },
       };
     } catch (error) {
@@ -52,11 +53,13 @@ export const saveResumeStructure = tool({
         update: {
           contactFields: input.contactFields,
           sections: input.sections,
+          includeRoleSummaries: input.includeRoleSummaries ?? false,
         },
         create: {
           userId,
           contactFields: input.contactFields,
           sections: input.sections,
+          includeRoleSummaries: input.includeRoleSummaries ?? false,
         },
       });
 
@@ -66,10 +69,13 @@ export const saveResumeStructure = tool({
         structure: {
           contactFields: structure.contactFields,
           sections: structure.sections as ResumeSection[],
+          includeRoleSummaries: structure.includeRoleSummaries,
         },
       };
     } catch (error) {
-      return { success: false, error: 'Failed to save resume structure' };
+      // Log full error for debugging but don't expose database internals to user
+      console.error('[saveResumeStructure] Error:', error);
+      return { success: false, error: 'Failed to save resume structure. Please try again.' };
     }
   },
 });
