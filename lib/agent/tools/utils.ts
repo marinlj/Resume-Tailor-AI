@@ -108,10 +108,3 @@ export function setCurrentUserId(userId: string) {
   currentUserId = userId;
 }
 
-/**
- * Get the temporary user ID until auth is implemented
- * @deprecated Use getCurrentUserId() instead - kept for backward compatibility during transition
- */
-export function getTempUserId(): string {
-  return getCurrentUserId();
-}
