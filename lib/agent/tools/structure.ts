@@ -2,13 +2,13 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { resumeStructureInputSchema, ResumeSection } from '../schemas';
-import { getTempUserId } from './utils';
+import { getCurrentUserId } from './utils';
 
 export const getResumeStructure = tool({
   description: 'Get the user\'s saved resume structure preference',
   inputSchema: z.object({}),
   execute: async () => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       const structure = await prisma.resumeStructure.findUnique({
         where: { userId },
@@ -40,7 +40,7 @@ export const saveResumeStructure = tool({
   description: 'Save the user\'s preferred resume structure after confirmation',
   inputSchema: resumeStructureInputSchema,
   execute: async (input) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       await prisma.user.upsert({
         where: { id: userId },
