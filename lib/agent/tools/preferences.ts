@@ -2,13 +2,13 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { updatePreferencesInputSchema } from '../schemas';
-import { getTempUserId } from './utils';
+import { getCurrentUserId } from './utils';
 
 export const getPreferences = tool({
   description: 'Get user preferences for resume formatting',
   inputSchema: z.object({}),
   execute: async () => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
 
     try {
       const prefs = await prisma.preference.findUnique({
@@ -45,7 +45,7 @@ export const updatePreferences = tool({
   description: 'Update user preferences for resume formatting',
   inputSchema: updatePreferencesInputSchema,
   execute: async (updates) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
 
     try {
       // Ensure user exists
