@@ -4,7 +4,7 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { successProfileInputSchema, RankedMatch, Gap } from '../schemas';
-import { getTempUserId, safeJsonParse } from './utils';
+import { getCurrentUserId, safeJsonParse } from './utils';
 
 const MATCH_THRESHOLDS = {
   GAP_THRESHOLD: 60,
@@ -27,7 +27,7 @@ export const matchAchievements = tool({
     profileJson: z.string().describe('JSON string of the success profile'),
   }),
   execute: async ({ profileJson }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
 
     const parseResult = safeJsonParse(profileJson, successProfileInputSchema);
     if (!parseResult.data) {
