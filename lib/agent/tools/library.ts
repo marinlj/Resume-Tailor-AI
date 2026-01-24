@@ -2,13 +2,13 @@ import { tool } from 'ai';
 import { prisma } from '@/lib/prisma';
 import { achievementInputSchema, skillInputSchema, educationInputSchema, contactDetailsInputSchema, libraryItemInputSchema, roleInputSchema } from '../schemas';
 import { z } from 'zod';
-import { getTempUserId } from './utils';
+import { getCurrentUserId } from './utils';
 
 export const getLibraryStatus = tool({
   description: 'Check if the user has a master library of achievements and get stats',
   inputSchema: z.object({}),
   execute: async () => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       const [roleCount, achievementCount, latestRole] = await Promise.all([
         prisma.role.count({ where: { userId } }),
@@ -43,7 +43,7 @@ export const getAchievements = tool({
     company: z.string().optional().describe('Filter by company name (searches in role)'),
   }),
   execute: async ({ tags, roleId, company }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       // Build the where clause - achievements are filtered via their role
       const where: Record<string, unknown> = {
@@ -110,7 +110,7 @@ export const addAchievement = tool({
   description: 'Add a new achievement to a role in the library',
   inputSchema: achievementInputSchema,
   execute: async (input) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       // Verify the role belongs to this user
       const role = await prisma.role.findFirst({
@@ -167,7 +167,7 @@ export const addMultipleAchievements = tool({
     console.log('[addMultipleAchievements] Starting with', achievements.length, 'achievements for role', roleId);
     let userId: string;
     try {
-      userId = getTempUserId();
+      userId = getCurrentUserId();
       console.log('[addMultipleAchievements] userId:', userId);
     } catch (error) {
       console.error('[addMultipleAchievements] Failed to get userId:', error);
@@ -231,7 +231,7 @@ export const addRolesWithAchievements = tool({
     console.log('[addRolesWithAchievements] Starting with', roles.length, 'roles');
     let userId: string;
     try {
-      userId = getTempUserId();
+      userId = getCurrentUserId();
       console.log('[addRolesWithAchievements] userId:', userId);
     } catch (error) {
       console.error('[addRolesWithAchievements] Failed to get userId:', error);
@@ -310,7 +310,7 @@ export const updateAchievement = tool({
     }).describe('Fields to update'),
   }),
   execute: async ({ id, updates }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       // First verify the achievement belongs to a role owned by this user
       const existingAchievement = await prisma.achievement.findFirst({
@@ -378,7 +378,7 @@ export const deleteAchievement = tool({
     id: z.string().describe('Achievement ID to delete'),
   }),
   execute: async ({ id }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       // Verify the achievement belongs to a role owned by this user
       const achievement = await prisma.achievement.findFirst({
@@ -411,7 +411,7 @@ export const getRoles = tool({
   description: 'Get all roles (work experiences) from the library with their achievements',
   inputSchema: z.object({}),
   execute: async () => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       const roles = await prisma.role.findMany({
         where: { userId },
@@ -446,7 +446,7 @@ export const addRole = tool({
   description: 'Add a new role (work experience) to the library',
   inputSchema: roleInputSchema,
   execute: async (input) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       await prisma.user.upsert({
         where: { id: userId },
@@ -489,7 +489,7 @@ export const updateRole = tool({
     updates: roleInputSchema.partial().describe('Fields to update'),
   }),
   execute: async ({ id, updates }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       const role = await prisma.role.update({
         where: { id, userId },
@@ -533,7 +533,7 @@ export const deleteRole = tool({
     id: z.string().describe('Role ID to delete'),
   }),
   execute: async ({ id }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       await prisma.role.delete({
         where: { id, userId },
@@ -555,7 +555,7 @@ export const getSkills = tool({
     category: z.string().optional().describe('Filter by category'),
   }),
   execute: async ({ category }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       const where: Record<string, unknown> = { userId };
       if (category) {
@@ -589,7 +589,7 @@ export const addSkills = tool({
   }),
   execute: async ({ skills }) => {
     try {
-      const userId = getTempUserId();
+      const userId = getCurrentUserId();
       console.log('[addSkills] Starting with userId:', userId, 'skills count:', skills.length);
 
       // Ensure user exists
@@ -642,7 +642,7 @@ export const updateSkill = tool({
     updates: skillInputSchema.partial().describe('Fields to update'),
   }),
   execute: async ({ id, updates }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       const skill = await prisma.skill.update({
         where: { id, userId },
@@ -672,7 +672,7 @@ export const deleteSkill = tool({
     id: z.string().describe('Skill ID to delete'),
   }),
   execute: async ({ id }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       await prisma.skill.delete({
         where: { id, userId },
@@ -693,7 +693,7 @@ export const getEducation = tool({
   description: 'Get all education entries from the library',
   inputSchema: z.object({}),
   execute: async () => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       const education = await prisma.education.findMany({
         where: { userId },
@@ -728,7 +728,7 @@ export const addEducation = tool({
   }),
   execute: async ({ education }) => {
     try {
-      const userId = getTempUserId();
+      const userId = getCurrentUserId();
       console.log('[addEducation] Starting with userId:', userId, 'education count:', education.length);
 
       // Ensure user exists
@@ -775,7 +775,7 @@ export const updateEducation = tool({
     updates: educationInputSchema.partial().describe('Fields to update'),
   }),
   execute: async ({ id, updates }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       const education = await prisma.education.update({
         where: { id, userId },
@@ -819,7 +819,7 @@ export const deleteEducation = tool({
     id: z.string().describe('Education ID to delete'),
   }),
   execute: async ({ id }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       await prisma.education.delete({
         where: { id, userId },
@@ -840,7 +840,7 @@ export const getContactDetails = tool({
   description: 'Get the user\'s contact details from the library',
   inputSchema: z.object({}),
   execute: async () => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       const contactDetails = await prisma.contactDetails.findUnique({
         where: { userId },
@@ -881,7 +881,7 @@ export const updateContactDetails = tool({
     console.log('[updateContactDetails] Input received:', JSON.stringify(input, null, 2));
     let userId: string;
     try {
-      userId = getTempUserId();
+      userId = getCurrentUserId();
       console.log('[updateContactDetails] userId:', userId);
     } catch (error) {
       console.error('[updateContactDetails] Failed to get userId:', error);
@@ -1066,7 +1066,7 @@ export const getLibraryItems = tool({
     type: z.string().optional().describe('Filter by type (project, certification, award, publication, volunteer, etc.)'),
   }),
   execute: async ({ type }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       const where: Record<string, unknown> = { userId };
       if (type) {
@@ -1107,7 +1107,7 @@ export const addLibraryItems = tool({
     console.log('[addLibraryItems] Starting with', items.length, 'items');
     let userId: string;
     try {
-      userId = getTempUserId();
+      userId = getCurrentUserId();
       console.log('[addLibraryItems] userId:', userId);
     } catch (error) {
       console.error('[addLibraryItems] Failed to get userId:', error);
@@ -1160,7 +1160,7 @@ export const updateLibraryItem = tool({
     updates: libraryItemInputSchema.partial().describe('Fields to update'),
   }),
   execute: async ({ id, updates }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       const item = await prisma.libraryItem.update({
         where: { id, userId },
@@ -1200,7 +1200,7 @@ export const deleteLibraryItem = tool({
     id: z.string().describe('Library item ID to delete'),
   }),
   execute: async ({ id }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       await prisma.libraryItem.delete({
         where: { id, userId },
@@ -1221,7 +1221,7 @@ export const getProfessionalSummary = tool({
   description: 'Get the user\'s professional summary from the library',
   inputSchema: z.object({}),
   execute: async () => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -1244,7 +1244,7 @@ export const updateProfessionalSummary = tool({
     summary: z.string().describe('Professional summary text (2-4 sentences)'),
   }),
   execute: async ({ summary }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
     try {
       await prisma.user.upsert({
         where: { id: userId },
