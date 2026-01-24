@@ -4,7 +4,7 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { successProfileInputSchema, RankedMatch, Gap } from '../schemas';
-import { getCurrentUserId, safeJsonParse } from './utils';
+import { getCurrentUserId } from './utils';
 
 const MATCH_THRESHOLDS = {
   GAP_THRESHOLD: 60,
@@ -24,21 +24,10 @@ const matchResultSchema = z.object({
 export const matchAchievements = tool({
   description: 'Match achievements from the library against a success profile using semantic matching. Returns ranked matches and identified gaps.',
   inputSchema: z.object({
-    profileJson: z.string().describe('JSON string of the success profile'),
+    profile: successProfileInputSchema.describe('The success profile with requirements and themes'),
   }),
-  execute: async ({ profileJson }) => {
+  execute: async ({ profile }) => {
     const userId = getCurrentUserId();
-
-    const parseResult = safeJsonParse(profileJson, successProfileInputSchema);
-    if (!parseResult.data) {
-      return {
-        success: false,
-        error: parseResult.error || 'Failed to parse profile JSON',
-        matches: [],
-        gaps: [],
-      };
-    }
-    const profile = parseResult.data;
 
     // Fetch roles with achievements (CORRECT: uses Role model)
     let roles;

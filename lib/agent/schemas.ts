@@ -163,9 +163,30 @@ export const successProfileSchema = z.object({
 
 export type SuccessProfile = z.infer<typeof successProfileSchema>;
 
+// ============================================================================
+// Success Profile Input (for matching)
+// ============================================================================
+
+/**
+ * Schema for success profile used in matching
+ */
+export const keyThemeSchema = z.object({
+  theme: z.string(),
+  tags: z.array(z.string()),
+});
+
+export const successProfileInputSchema = z.object({
+  mustHave: z.array(z.string()),
+  niceToHave: z.array(z.string()).optional(),
+  keyThemes: z.array(keyThemeSchema).optional(),
+});
+
+export type KeyTheme = z.infer<typeof keyThemeSchema>;
+export type SuccessProfileInput = z.infer<typeof successProfileInputSchema>;
+
 // Matching
 export const matchAchievementsInputSchema = z.object({
-  profileJson: z.string().describe('JSON string of the success profile'),
+  profile: successProfileInputSchema.describe('The success profile with requirements and themes'),
 });
 
 export const rankedMatchSchema = z.object({
@@ -241,23 +262,6 @@ export type UpdatePreferencesInput = z.infer<typeof updatePreferencesInputSchema
 // JSON Input Validation Schemas
 // These schemas validate JSON strings passed as tool parameters
 // ============================================================================
-
-/**
- * Schema for success profile used in matching
- */
-export const keyThemeSchema = z.object({
-  theme: z.string(),
-  tags: z.array(z.string()),
-});
-
-export const successProfileInputSchema = z.object({
-  mustHave: z.array(z.string()),
-  niceToHave: z.array(z.string()).optional(),
-  keyThemes: z.array(keyThemeSchema).optional(),
-});
-
-export type KeyTheme = z.infer<typeof keyThemeSchema>;
-export type SuccessProfileInput = z.infer<typeof successProfileInputSchema>;
 
 /**
  * Schema for matched achievements array used in generation
