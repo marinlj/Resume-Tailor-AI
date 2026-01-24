@@ -6,7 +6,7 @@ import { generateDocx, parseMarkdownToResumeData } from '@/lib/docx/generator';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { matchedAchievementsArraySchema, ResumeSection } from '../schemas';
-import { getTempUserId, safeJsonParse, sanitizeFilename } from './utils';
+import { getCurrentUserId, safeJsonParse, sanitizeFilename } from './utils';
 
 export const generateResume = tool({
   description: 'Generate a tailored resume markdown from matched achievements. Call this after matchAchievements.',
@@ -37,7 +37,7 @@ export const generateResume = tool({
     userPortfolio,
     userGithub,
   }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
 
     // Fetch contact details from library if not provided
     let contactName = userName;
@@ -304,7 +304,7 @@ export const generateDocxFile = tool({
     resumeId: z.string().describe('ID of the generated resume'),
   }),
   execute: async ({ resumeId }) => {
-    const userId = getTempUserId();
+    const userId = getCurrentUserId();
 
     let resume;
     try {
