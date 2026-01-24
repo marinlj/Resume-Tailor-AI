@@ -144,7 +144,7 @@ export const resumeAgent = new ToolLoopAgent({
     getResumeStructure,
     saveResumeStructure,
   },
-  stopWhen: stepCountIs(15),
+  stopWhen: stepCountIs(25),
 });
 
 export type ResumeAgent = typeof resumeAgent;
