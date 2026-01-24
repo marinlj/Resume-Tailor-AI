@@ -218,9 +218,34 @@ export const matchOutputSchema = z.object({
 
 export type MatchOutput = z.infer<typeof matchOutputSchema>;
 
+// ============================================================================
+// Matched Achievements Schema (for generation)
+// ============================================================================
+
+/**
+ * Schema for matched achievements array used in generation
+ */
+export const matchedAchievementSchema = z.object({
+  achievementId: z.string(),
+  achievementText: z.string(),
+  company: z.string(),
+  title: z.string(),
+  score: z.number(),
+  matchedRequirements: z.array(z.string()),
+  location: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  roleSummary: z.string().optional(),
+  isLibraryItem: z.boolean().optional(),
+  itemType: z.string().optional(),
+});
+
+export const matchedAchievementsArraySchema = z.array(matchedAchievementSchema);
+export type MatchedAchievement = z.infer<typeof matchedAchievementSchema>;
+
 // Resume Generation
 export const generateResumeInputSchema = z.object({
-  matchesJson: z.string().describe('JSON string of ranked matches to include'),
+  matchedAchievements: matchedAchievementsArraySchema.describe('Array of matched achievements to include'),
   targetCompany: z.string().describe('Target company name'),
   targetRole: z.string().describe('Target role title'),
   summary: z.string().optional().describe('Optional professional summary'),
@@ -262,27 +287,6 @@ export type UpdatePreferencesInput = z.infer<typeof updatePreferencesInputSchema
 // JSON Input Validation Schemas
 // These schemas validate JSON strings passed as tool parameters
 // ============================================================================
-
-/**
- * Schema for matched achievements array used in generation
- */
-export const matchedAchievementSchema = z.object({
-  achievementId: z.string(),
-  achievementText: z.string(),
-  company: z.string(),
-  title: z.string(),
-  score: z.number(),
-  matchedRequirements: z.array(z.string()),
-  location: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  roleSummary: z.string().optional(),
-  isLibraryItem: z.boolean().optional(),
-  itemType: z.string().optional(),
-});
-
-export const matchedAchievementsArraySchema = z.array(matchedAchievementSchema);
-export type MatchedAchievement = z.infer<typeof matchedAchievementSchema>;
 
 /**
  * Schema for parsed requirements in research tools

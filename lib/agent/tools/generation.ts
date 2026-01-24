@@ -6,14 +6,14 @@ import { generateDocx, parseMarkdownToResumeData } from '@/lib/docx/generator';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { matchedAchievementsArraySchema, ResumeSection } from '../schemas';
-import { getCurrentUserId, safeJsonParse, sanitizeFilename } from './utils';
+import { getCurrentUserId, sanitizeFilename } from './utils';
 
 export const generateResume = tool({
   description: 'Generate a tailored resume markdown from matched achievements. Call this after matchAchievements.',
   inputSchema: z.object({
     targetCompany: z.string().describe('Target company name'),
     targetRole: z.string().describe('Target role title'),
-    matchedAchievementsJson: z.string().describe('JSON string of matched achievements to include'),
+    matchedAchievements: matchedAchievementsArraySchema.describe('Array of matched achievements to include'),
     summary: z.string().optional().describe('Professional summary paragraph'),
     // Contact details - optional, will fetch from library if not provided
     userName: z.string().optional().describe('User full name (optional - fetched from library if not provided)'),
@@ -27,7 +27,7 @@ export const generateResume = tool({
   execute: async ({
     targetCompany,
     targetRole,
-    matchedAchievementsJson,
+    matchedAchievements,
     summary,
     userName,
     userEmail,
@@ -87,15 +87,8 @@ export const generateResume = tool({
           { type: 'education', label: 'Education' },
         ];
 
-    // Validate JSON input
-    const parseResult = safeJsonParse(matchedAchievementsJson, matchedAchievementsArraySchema);
-    if (!parseResult.data) {
-      return {
-        success: false,
-        error: parseResult.error,
-      };
-    }
-    const matches = parseResult.data;
+    // Use the typed array directly (no JSON parsing needed)
+    const matches = matchedAchievements;
 
     // Fetch skills and education from library
     const [skills, education] = await Promise.all([
